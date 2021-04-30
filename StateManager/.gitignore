@@ -1,0 +1,10 @@
+
+.vs/
+bin/
+obj/
+output/
+*.csproj.user
+
+!.vscode
+!*.csproj
+!*.sln

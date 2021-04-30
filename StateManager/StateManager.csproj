@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Authors>show-5</Authors>
+    <TargetFramework>net5.0</TargetFramework>
+    <Configuration Condition="'$(Configuration)'==''">Debug</Configuration>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <!-- <PublishSingleFile>true</PublishSingleFile> -->
+    <!-- <PublishTrimmed>true</PublishTrimmed> -->
+    <PublishDir>$(ProjectDir)..\$(RuntimeIdentifier)</PublishDir>
+  </PropertyGroup>
+
+  <!-- Define Symbols -->
+  <PropertyGroup>
+    <DefineConstants Condition="'$(AllowUnsafeBlocks)'">$(DefineConstants);UNSAFE</DefineConstants>
+    <DefineConstants Condition="'$(Configuration)'=='Debug'">$(DefineConstants);DEBUG</DefineConstants>
+    <DefineConstants Condition="'$(Configuration)'=='Release'">$(DefineConstants);RELEASE</DefineConstants>
+    <DefineConstants> $(DefineConstants);                              <!-- ここに追加 --></DefineConstants>
+  </PropertyGroup>
+
+</Project>
