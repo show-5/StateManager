@@ -151,7 +151,7 @@ public class FooAction : IAction
 
 // 実行
 // アクションはキャッシュされているので値をセットする関数を渡す
-// キャプチャさせるとラムダ式が毎回生成されるため頻繁に通る場所などでは引数として渡したほうがよい
+// 外部の変数を参照しているとラムダ式が毎回生成されるため頻繁に通る場所などでは引数として渡したほうがよい
 string text = "abcde";
 dispatcher.Dispatch<FooAction, string>(text, (action, value) => action.SetValue(value));
 ```
