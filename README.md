@@ -131,6 +131,7 @@ dispatcher.Dispatch<FooBarAction, (int, string)>((100, "hogehoge"));
 - 自前で実装
 
 ```C#
+// 引数無しで生成できる必要がある
 public class FooAction : IAction
 {
 	public string Value { get; private set; }
@@ -149,6 +150,8 @@ public class FooAction : IAction
 }
 
 // 実行
+// アクションはキャッシュされているので値をセットする関数を渡す
+// キャプチャさせるとラムダ式が毎回生成されるため頻繁に通る場所などでは引数として渡したほうがよい
 string text = "abcde";
 dispatcher.Dispatch<FooAction, string>(text, (action, value) => action.SetValue(value));
 ```
