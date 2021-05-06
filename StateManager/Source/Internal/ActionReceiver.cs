@@ -1,42 +1,67 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace StateManager
 {
-	internal class ActionReceiver
+	internal interface IActionReceiver
 	{
-		public (IStore store, IReducer reducer)[] Reducers = null;
-		public IEffect[] Effects = null;
-		public IEffectAsync[] EffectAsyncs = null;
-		public event Action<IAction, Dispatcher> Callback = null;
-		public event Func<IAction, Dispatcher, Task> CallbackAsync = null;
+		void SetReducers(IEnumerable<(IStore store, IReducer reducer)> reducers);
+		void SetEffects(IEnumerable<IEffect> effects);
+		void SetEffectAsyncs(IEnumerable<IEffectAsync> effectAsyncs);
+		IDisposable AddCallbackDelegate(Delegate callback);
+		IDisposable AddCallbackAsyncDelegate(Delegate callback);
+	}
+	internal class ActionReceiver<TAction> : IActionReceiver
+		where TAction : IAction
+	{
+		private (IStore store, IReducer reducer)[] Reducers = null;
+		private IEffect<TAction>[] Effects = null;
+		private IEffectAsync<TAction>[] EffectAsyncs = null;
+		private event Action<TAction, Dispatcher> Callback = null;
+		private event Func<TAction, Dispatcher, Task> CallbackAsync = null;
 		private static ConcurrentBag<List<Task>> WaitListPool = new ConcurrentBag<List<Task>>();
 
-
-		public IDisposable AddCallback<TAction>(Action<TAction, Dispatcher> callback)
-			where TAction : IAction
+		public void SetReducers(IEnumerable<(IStore store, IReducer reducer)> reducers)
 		{
-			Action<IAction, Dispatcher> func = (action, dispatcher) => callback((TAction)action, dispatcher);
-			Callback += func;
-			return new DisposableObject<(ActionReceiver actionReceiver, Action<IAction, Dispatcher> func)>(arg =>
+			Reducers = reducers.ToArray();
+		}
+		public void SetEffects(IEnumerable<IEffect> effects)
+		{
+			Effects = effects.Cast<IEffect<TAction>>().ToArray();
+		}
+		public void SetEffectAsyncs(IEnumerable<IEffectAsync> effectAsyncs)
+		{
+			EffectAsyncs = effectAsyncs.Cast<IEffectAsync<TAction>>().ToArray();
+		}
+
+		public IDisposable AddCallback(Action<TAction, Dispatcher> callback)
+		{
+			Callback += callback;
+			return new DisposableObject<(ActionReceiver<TAction> actionReceiver, Action<TAction, Dispatcher> func)>(arg =>
 			{
 				arg.actionReceiver.Callback -= arg.func;
-			}, (this, func));
+			}, (this, callback));
 		}
-		public IDisposable AddCallback<TAction>(Func<TAction, Dispatcher, Task> callback)
-			where TAction : IAction
+		public IDisposable AddCallback(Func<TAction, Dispatcher, Task> callback)
 		{
-			Func<IAction, Dispatcher, Task> func = (action, dispatcher) => callback((TAction)action, dispatcher);
-			CallbackAsync += func;
-			return new DisposableObject<(ActionReceiver actionReceiver, Func<IAction, Dispatcher, Task> func)>(arg =>
+			CallbackAsync += callback;
+			return new DisposableObject<(ActionReceiver<TAction> actionReceiver, Func<TAction, Dispatcher, Task> func)>(arg =>
 			{
 				arg.actionReceiver.CallbackAsync -= arg.func;
-			}, (this, func));
+			}, (this, callback));
 		}
-		public void Dispatch<TAction>(TAction action, Dispatcher dispatcher)
-			where TAction : IAction
+		public IDisposable AddCallbackDelegate(Delegate callback)
+		{
+			return AddCallback((Action<TAction, Dispatcher>)callback);
+		}
+		public IDisposable AddCallbackAsyncDelegate(Delegate callback)
+		{
+			return AddCallback((Func<TAction, Dispatcher, Task>)callback);
+		}
+		public void Dispatch(TAction action, Dispatcher dispatcher)
 		{
 			if (Reducers != null) {
 				foreach (var reducer in Reducers) {
@@ -57,8 +82,7 @@ namespace StateManager
 				ReturnAction(action);
 			}
 		}
-		private async Task ExecuteEffects<TAction>(TAction action, Dispatcher dispatcher)
-			where TAction : IAction
+		private async Task ExecuteEffects(TAction action, Dispatcher dispatcher)
 		{
 			// await Task.WhenAll(effects.Cast<IEffectAsync<TAction>>().Select(effect => effect.Effect(action, this))).ConfigureAwait(false);
 			// ReturnAction(action);
@@ -83,8 +107,7 @@ namespace StateManager
 			ReturnAction(action);
 		}
 
-		private static void ReturnAction<TAction>(TAction action)
-			where TAction : IAction
+		private static void ReturnAction(TAction action)
 		{
 			ActionPool<TAction>.Return(action);
 		}

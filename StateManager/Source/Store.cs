@@ -12,7 +12,7 @@ namespace StateManager
 	public abstract class Store<TState> : IStore
 	{
 		private TState state;
-		private event StateOnUpdate<TState> OnUpdate;
+		private event Action<TState> OnUpdate;
 		// private readonly object eventLock = new object();
 		private readonly object stateUpdateLock = new object();
 
@@ -62,9 +62,9 @@ namespace StateManager
 
 		Type IStore.StateType => typeof(TState);
 
-		internal IDisposable AddBindState(StateOnUpdate<TState> onUpdate, SynchronizationContext context, bool initialCall)
+		internal IDisposable AddBindState(Action<TState> onUpdate, SynchronizationContext context, bool initialCall)
 		{
-			StateOnUpdate<TState> func;
+			Action<TState> func;
 			if (context != null) {
 				func = state => context.Post(ss => onUpdate((TState)ss), state);
 			}
@@ -75,12 +75,12 @@ namespace StateManager
 			if (initialCall) {
 				func.Invoke(state);
 			}
-			return new DisposableObject<(Store<TState> store, StateOnUpdate<TState> callback)>(arg =>
+			return new DisposableObject<(Store<TState> store, Action<TState> callback)>(arg =>
 			{
 				arg.store.OnUpdate -= arg.callback;
 			}, (this, func));
 		}
-		IDisposable IStore.Subscribe(StateOnUpdate onUpdate, SynchronizationContext context, bool initialCall) => AddBindState((TState state) => onUpdate(state), context, initialCall);
+		IDisposable IStore.Subscribe(Action<object> onUpdate, SynchronizationContext context, bool initialCall) => AddBindState((TState state) => onUpdate(state), context, initialCall);
 
 		internal void Reduce(IReducer<TState> reducer, IAction action)
 		{

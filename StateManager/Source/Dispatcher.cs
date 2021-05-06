@@ -13,7 +13,7 @@ namespace StateManager
 	public class Dispatcher
 	{
 		private Stores stores = new Stores();
-		private Dictionary<Type, ActionReceiver> actionReceivers = new Dictionary<Type, ActionReceiver>();
+		private Dictionary<Type, IActionReceiver> actionReceivers = new Dictionary<Type, IActionReceiver>();
 		private static ConcurrentBag<List<Task>> waitListPool = new ConcurrentBag<List<Task>>();
 
 		/// <summary>
@@ -177,7 +177,7 @@ namespace StateManager
 		/// <param name="initialCall">最初に1回呼ぶ</param>
 		/// <param name="context">コンテキスト（指定不要ならnull）</param>
 		/// <returns>購読解除用Disposable</returns>
-		public IDisposable Subscribe(int id, StateOnUpdate onUpdate, SynchronizationContext context = null, bool initialCall = true)
+		public IDisposable Subscribe(int id, Action<object> onUpdate, SynchronizationContext context = null, bool initialCall = true)
 		{
 			return stores.Get(id).Subscribe(onUpdate, context, initialCall);
 		}
@@ -192,7 +192,7 @@ namespace StateManager
 		/// <param name="initialCall">最初に1回呼ぶ</param>
 		/// <param name="context">コンテキスト（指定不要ならnull）</param>
 		/// <returns>購読解除用Disposable</returns>
-		public IDisposable Subscribe(string name, StateOnUpdate onUpdate, SynchronizationContext context = null, bool initialCall = true)
+		public IDisposable Subscribe(string name, Action<object> onUpdate, SynchronizationContext context = null, bool initialCall = true)
 		{
 			return stores.Get(name).Subscribe(onUpdate, context, initialCall);
 		}
@@ -208,7 +208,7 @@ namespace StateManager
 		/// <param name="initialCall">最初に1回呼ぶ</param>
 		/// <param name="context">コンテキスト（指定不要ならnull）</param>
 		/// <returns>購読解除用Disposable</returns>
-		public IDisposable Subscribe(Type type, StateOnUpdate onUpdate, SynchronizationContext context = null, bool initialCall = true)
+		public IDisposable Subscribe(Type type, Action<object> onUpdate, SynchronizationContext context = null, bool initialCall = true)
 		{
 			return stores.Get(type).Subscribe(onUpdate, context, initialCall);
 		}
@@ -224,7 +224,7 @@ namespace StateManager
 		/// <param name="context">コンテキスト（指定不要ならnull）</param>
 		/// <typeparam name="TState">ステートの型</typeparam>
 		/// <returns>購読解除用Disposable</returns>
-		public IDisposable Subscribe<TState>(int id, StateOnUpdate<TState> onUpdate, SynchronizationContext context = null, bool initialCall = true)
+		public IDisposable Subscribe<TState>(int id, Action<TState> onUpdate, SynchronizationContext context = null, bool initialCall = true)
 		{
 			return stores.Get<TState>(id).AddBindState(onUpdate, context, initialCall);
 		}
@@ -240,7 +240,7 @@ namespace StateManager
 		/// <param name="context">コンテキスト（指定不要ならnull）</param>
 		/// <typeparam name="TState">ステートの型</typeparam>
 		/// <returns>購読解除用Disposable</returns>
-		public IDisposable Subscribe<TState>(string name, StateOnUpdate<TState> onUpdate, SynchronizationContext context = null, bool initialCall = true)
+		public IDisposable Subscribe<TState>(string name, Action<TState> onUpdate, SynchronizationContext context = null, bool initialCall = true)
 		{
 			return stores.Get<TState>(name).AddBindState(onUpdate, context, initialCall);
 		}
@@ -256,7 +256,7 @@ namespace StateManager
 		/// <param name="context">コンテキスト（指定不要ならnull）</param>
 		/// <typeparam name="TState">ステートの型</typeparam>
 		/// <returns>購読解除用Disposable</returns>
-		public IDisposable Subscribe<TState>(StateOnUpdate<TState> onUpdate, SynchronizationContext context = null, bool initialCall = true)
+		public IDisposable Subscribe<TState>(Action<TState> onUpdate, SynchronizationContext context = null, bool initialCall = true)
 		{
 			return stores.Get<TState>(typeof(TState)).AddBindState(onUpdate, context, initialCall);
 		}
@@ -324,7 +324,7 @@ namespace StateManager
 		public IDisposable RegisterActionCallback<TAction>(Action<TAction, Dispatcher> callback)
 			where TAction : IAction
 		{
-			return GetOrAddActionReceiver(typeof(TAction)).AddCallback(callback);
+			return GetOrAddActionReceiver<TAction>().AddCallback(callback);
 		}
 
 		/// <summary>
@@ -336,15 +336,52 @@ namespace StateManager
 		public IDisposable RegisterActionCallback<TAction>(Func<TAction, Dispatcher, Task> callback)
 			where TAction : IAction
 		{
-			return GetOrAddActionReceiver(typeof(TAction)).AddCallback(callback);
+			return GetOrAddActionReceiver<TAction>().AddCallback(callback);
 		}
+
+		/// <summary>
+		/// コールバックオブジェクト登録
+		/// </summary>
+		/// <param name="callbackObject">
+		/// コーバックオブジェクト<br/>
+		/// IActionCallback&lt;&gt;、IActionCallbackAsync&lt;&gt;を継承
+		/// </param>
+		/// <returns></returns>
+		public IDisposable RegisterActionCallback(object callbackObject)
+		{
+			List<IDisposable> disposables = new List<IDisposable>();
+			var type = callbackObject.GetType();
+			foreach (var iType in type.GetInterfaces()) {
+				if (!iType.IsGenericType) { continue; }
+				var iDef = iType.GetGenericTypeDefinition();
+				if (iDef == typeof(IActionCallback<>)) {
+					var actionType = iType.GenericTypeArguments[0];
+					var callback = ActionCallbackDelegateCreater.CreateCallbackDelegate(actionType, callbackObject);
+					disposables.Add(GetOrAddActionReceiver(actionType).AddCallbackDelegate(callback));
+					continue;
+				}
+				if (iDef == typeof(IActionCallbackAsync<>)) {
+					var actionType = iType.GenericTypeArguments[0];
+					var callback = ActionCallbackDelegateCreater.CreateCallbackAsyncDelegate(actionType, callbackObject);
+					disposables.Add(GetOrAddActionReceiver(actionType).AddCallbackAsyncDelegate(callback));
+					continue;
+				}
+			}
+			return new DisposableObject<List<IDisposable>>(list =>
+			{
+				foreach (var d in list) {
+					d.Dispose();
+				}
+			}, disposables);
+		}
+
 
 		private void DispatchInternal<TAction>(TAction action)
 			where TAction : IAction
 		{
-			ActionReceiver actionReceiver;
+			IActionReceiver actionReceiver;
 			if (!actionReceivers.TryGetValue(action.GetType(), out actionReceiver)) { return; }
-			actionReceiver.Dispatch(action, this);
+			(actionReceiver as ActionReceiver<TAction>).Dispatch(action, this);
 		}
 
 		private TAction GetNewAction<TAction>()
@@ -360,7 +397,9 @@ namespace StateManager
 			var instances = types.Execute(type => Activator.CreateInstance(type) as IStore);
 			var ids = stores.Initialize(instances);
 			var reducerGroup = ids.SelectMany(sid => sid.store.Reducers.Select(reducer => (sid.store, reducer))).GroupBy(data => data.reducer.ActionType);
-			reducerGroup.Execute(g => GetOrAddActionReceiver(g.Key).Reducers = g.ToArray());
+			foreach (var g in reducerGroup) {
+				GetOrAddActionReceiver(g.Key).SetReducers(g);
+			}
 		}
 		private void InitializeEffects(IEnumerable<Type> types)
 		{
@@ -368,7 +407,9 @@ namespace StateManager
 			var group = typeInstances.SelectMany(ti => ti.type.GetGenericArgTypes(typeof(IEffect<>), 0)
 				.Select(actionType => (actionType: actionType, instance: ti.instance)))
 			.GroupBy(ti => ti.actionType, ti => ti.instance);
-			group.Execute(g => GetOrAddActionReceiver(g.Key).Effects = g.ToArray());
+			foreach (var g in group) {
+				GetOrAddActionReceiver(g.Key).SetEffects(g);
+			}
 		}
 		private void InitializeEffectAsyncs(IEnumerable<Type> types)
 		{
@@ -376,17 +417,25 @@ namespace StateManager
 			var group = typeInstances.SelectMany(ti => ti.type.GetGenericArgTypes(typeof(IEffectAsync<>), 0)
 				.Select(actionType => (actionType: actionType, instance: ti.instance)))
 			.GroupBy(ti => ti.actionType, ti => ti.instance);
-			group.Execute(g => GetOrAddActionReceiver(g.Key).EffectAsyncs = g.ToArray());
+			foreach (var g in group) {
+				GetOrAddActionReceiver(g.Key).SetEffectAsyncs(g);
+			}
 		}
 
-		private ActionReceiver GetOrAddActionReceiver(Type actionType)
+		private IActionReceiver GetOrAddActionReceiver(Type actionType)
 		{
-			ActionReceiver receiver;
+			IActionReceiver receiver;
 			if (!actionReceivers.TryGetValue(actionType, out receiver)) {
-				receiver = new ActionReceiver();
+				var actionReceiverType = typeof(ActionReceiver<>).MakeGenericType(actionType);
+				receiver = Activator.CreateInstance(actionReceiverType) as IActionReceiver;
 				actionReceivers.Add(actionType, receiver);
 			}
 			return receiver;
+		}
+		private ActionReceiver<TAction> GetOrAddActionReceiver<TAction>()
+			where TAction : IAction
+		{
+			return GetOrAddActionReceiver(typeof(TAction)) as ActionReceiver<TAction>;
 		}
 
 	}
