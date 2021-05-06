@@ -149,9 +149,6 @@ public class FooAction : IAction
 }
 
 // 実行
-dispatcher.Dispatch<FooAction>(action => action.SetValue("Hoge"));
-
-// キャプチャさせるとラムダ式がキャッシュされないため引数として渡す
 string text = "abcde";
 dispatcher.Dispatch<FooAction, string>(text, (action, str) => action.SetValue(str));
 ```
