@@ -176,15 +176,14 @@ public class Effects
 
 ## ActionCallback
 
-登録、解除可能なアクション実行時の処理です。  
-Unity でのメッセージの代わりなど
+登録、解除可能なアクション実行時の処理です。
 
 ```C#
-public class Test : MonoBehaviour
+public class TestClass
 {
 	private List<IDisposable> disposables = new List<IDisposable>();
 
-	private void Start()
+	public TestClass()
 	{
 		// Dispatcherはstaticやシングルトンなどで保持しておく
 		// Dispatcher dispatcher = ...
@@ -193,7 +192,8 @@ public class Test : MonoBehaviour
 		disposables.Add(dispatcher.RegisterActionCallback<FooAction>(ActionCallback));
 		disposables.Add(dispatcher.RegisterActionCallback<FooAction>(ActionCallbackAsync));
 	}
-	private void OnDestoroy()
+	// 終了処理
+	public void Release()
 	{
 		foreach (var disposable in disposables) {
 			disposable.Dispose();
@@ -212,14 +212,13 @@ public class Test : MonoBehaviour
 IActionCallback、IActionCallbackAsync を継承することによりまとめて登録できます。
 
 ```C#
-public class Test
-	: MonoBehaviour
-	, IActionCallback<FooAction>
+public class TestClass
+	: IActionCallback<FooAction>
 	, IActionCallbackAsync<FooBarAction>
 {
 	// ...略...
 
-	private void Start()
+	public TestClass()
 	{
 		disposables.Add(dispatcher.RegisterActionCallback(this));
 	}
