@@ -125,7 +125,7 @@ public class FooBarAction : ActionBase<(int IntValue, string StringValue)>
 
 dispatcher.Dispatch<BarAction>();
 // ここで渡した値は"Payload"という名前で取得できます。
-dispatcher.Dispatch<FooBarAction, (int IntValue, string StringValue)>((100, "hogehoge"));
+dispatcher.Dispatch<FooBarAction, (int, string)>((100, "hogehoge"));
 ```
 
 - 自前で実装
