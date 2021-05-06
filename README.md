@@ -150,7 +150,7 @@ public class FooAction : IAction
 
 // 実行
 string text = "abcde";
-dispatcher.Dispatch<FooAction, string>(text, (action, str) => action.SetValue(str));
+dispatcher.Dispatch<FooAction, string>(text, (action, value) => action.SetValue(value));
 ```
 
 ## Effect
