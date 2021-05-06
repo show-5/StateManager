@@ -24,9 +24,7 @@ namespace StateManager
 		}
 		~DisposableObject()
 		{
-			if (disposeAction != null) {
-				disposeAction?.Invoke(value);
-			}
+			disposeAction?.Invoke(value);
 		}
 	}
 }
