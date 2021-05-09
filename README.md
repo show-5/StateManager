@@ -150,7 +150,7 @@ public class FooAction : IAction
 }
 
 // 実行
-// アクションはキャッシュされているので値をセットする関数を渡す
+// 値をセットする関数を渡す
 string text = "abcde";
 dispatcher.Dispatch<FooAction, string>(text, (action, value) => action.SetValue(value));
 ```
