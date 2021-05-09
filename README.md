@@ -95,7 +95,7 @@ public class FooStore : Store<FooState>
 	};
 }
 
-// intなどの基本型でもStateにできます。
+// intなどでもStateにできます。
 public class Int01Store : Store<int>
 {
 	// おそらく名前は必須になるでしょう
