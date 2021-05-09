@@ -69,7 +69,7 @@ public class FooState
 // Store
 public class FooStore : Store<FooState>
 {
-	// 名前を指定しなかった（nullである）場合、Stateの型でのみアクセスできます。
+	// 名前を指定しなかった（又はnullの）場合、Stateの型でのみアクセスできます。
 	// 同じ型を複数登録する場合は名前の登録がないとアクセスできなくなります。
 	public override string Name => "State01";
 
