@@ -24,7 +24,7 @@ namespace StateManager
 		{
 			InitializeStores(initializer.Stores);
 			InitializeEffects(initializer.Effects);
-			InitializeEffectAsyncs(initializer.EffectAsyncs);
+			// InitializeEffectAsyncs(initializer.EffectAsyncs);
 		}
 
 		/// <summary>
@@ -403,24 +403,30 @@ namespace StateManager
 		}
 		private void InitializeEffects(IEnumerable<Type> types)
 		{
-			var typeInstances = types.Execute(type => (type: type, instance: Activator.CreateInstance(type) as IEffect));
-			var group = typeInstances.SelectMany(ti => ti.type.GetGenericArgTypes(typeof(IEffect<>), 0)
+			var typeInstances = types.Execute(type => (type: type, instance: Activator.CreateInstance(type)));
+			var effectGroup = typeInstances.SelectMany(ti => ti.type.GetGenericArgTypes(typeof(IEffect<>), 0)
 				.Select(actionType => (actionType: actionType, instance: ti.instance)))
 			.GroupBy(ti => ti.actionType, ti => ti.instance);
-			foreach (var g in group) {
-				GetOrAddActionReceiver(g.Key).SetEffects(g);
+			foreach (var g in effectGroup) {
+				GetOrAddActionReceiver(g.Key).SetEffects(g.OfType<IEffect>());
 			}
-		}
-		private void InitializeEffectAsyncs(IEnumerable<Type> types)
-		{
-			var typeInstances = types.Execute(type => (type: type, instance: Activator.CreateInstance(type) as IEffectAsync));
-			var group = typeInstances.SelectMany(ti => ti.type.GetGenericArgTypes(typeof(IEffectAsync<>), 0)
+			var effectAsyncGroup = typeInstances.SelectMany(ti => ti.type.GetGenericArgTypes(typeof(IEffectAsync<>), 0)
 				.Select(actionType => (actionType: actionType, instance: ti.instance)))
 			.GroupBy(ti => ti.actionType, ti => ti.instance);
-			foreach (var g in group) {
-				GetOrAddActionReceiver(g.Key).SetEffectAsyncs(g);
+			foreach (var g in effectAsyncGroup) {
+				GetOrAddActionReceiver(g.Key).SetEffectAsyncs(g.OfType<IEffectAsync>());
 			}
 		}
+		// private void InitializeEffectAsyncs(IEnumerable<Type> types)
+		// {
+		// 	var typeInstances = types.Execute(type => (type: type, instance: Activator.CreateInstance(type) as IEffectAsync));
+		// 	var group = typeInstances.SelectMany(ti => ti.type.GetGenericArgTypes(typeof(IEffectAsync<>), 0)
+		// 		.Select(actionType => (actionType: actionType, instance: ti.instance)))
+		// 	.GroupBy(ti => ti.actionType, ti => ti.instance);
+		// 	foreach (var g in group) {
+		// 		GetOrAddActionReceiver(g.Key).SetEffectAsyncs(g);
+		// 	}
+		// }
 
 		private IActionReceiver GetOrAddActionReceiver(Type actionType)
 		{

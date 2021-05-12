@@ -14,7 +14,7 @@ namespace StateManager
 	{
 		internal HashSet<Type> Stores { get; private set; } = new HashSet<Type>();
 		internal HashSet<Type> Effects { get; private set; } = new HashSet<Type>();
-		internal HashSet<Type> EffectAsyncs { get; private set; } = new HashSet<Type>();
+		// internal HashSet<Type> EffectAsyncs { get; private set; } = new HashSet<Type>();
 
 		/// <summary>
 		/// アセンブリから自動でスキャン
@@ -33,9 +33,9 @@ namespace StateManager
 						if (typeof(IEffect).IsAssignableFrom(type)) {
 							return (typeof(IEffect), type);
 						}
-						if (typeof(IEffectAsync).IsAssignableFrom(type)) {
-							return (typeof(IEffectAsync), type);
-						}
+						// if (typeof(IEffectAsync).IsAssignableFrom(type)) {
+						// 	return (typeof(IEffectAsync), type);
+						// }
 					}
 					return (null, null);
 				})
@@ -46,7 +46,7 @@ namespace StateManager
 			// EffectAsyncs = types[typeof(IAsyncEffector)].Concat(EffectAsyncs).ToHashSet();
 			Stores = new HashSet<Type>(types[typeof(IStore)].Concat(Stores));
 			Effects = new HashSet<Type>(types[typeof(IEffect)].Concat(Effects));
-			EffectAsyncs = new HashSet<Type>(types[typeof(IEffectAsync)].Concat(EffectAsyncs));
+			// EffectAsyncs = new HashSet<Type>(types[typeof(IEffectAsync)].Concat(EffectAsyncs));
 			return this;
 		}
 
@@ -72,15 +72,15 @@ namespace StateManager
 			return this;
 		}
 
-		/// <summary>
-		/// 実行関数追加
-		/// </summary>
-		/// <typeparam name="TEffectAsync">実行関数オブジェクト</typeparam>
-		/// <returns>自身</returns>
-		public DispatcherInitializer AddEffectAsync<TEffectAsync>() where TEffectAsync : IEffectAsync
-		{
-			EffectAsyncs.Add(typeof(IEffectAsync));
-			return this;
-		}
+		// /// <summary>
+		// /// 実行関数追加
+		// /// </summary>
+		// /// <typeparam name="TEffectAsync">実行関数オブジェクト</typeparam>
+		// /// <returns>自身</returns>
+		// public DispatcherInitializer AddEffectAsync<TEffectAsync>() where TEffectAsync : IEffectAsync
+		// {
+		// 	EffectAsyncs.Add(typeof(IEffectAsync));
+		// 	return this;
+		// }
 	}
 }

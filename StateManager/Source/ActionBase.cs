@@ -11,6 +11,12 @@ namespace StateManager
 		/// 初期化
 		/// </summary>
 		public virtual void Reset() { }
+
+		public static void Dispatch<TAction>(Dispatcher dispatcher)
+			where TAction : ActionBase
+		{
+			dispatcher.Dispatch<TAction>();
+		}
 	}
 
 	/// <summary>
@@ -29,5 +35,11 @@ namespace StateManager
 		/// 初期化
 		/// </summary>
 		public virtual void Reset() { }
+
+		public static void Dispatch<TAction>(Dispatcher dispatcher, TPayload payload)
+			where TAction : ActionBase<TPayload>
+		{
+			dispatcher.Dispatch<TAction, TPayload>(payload);
+		}
 	}
 }
