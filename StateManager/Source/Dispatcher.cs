@@ -177,7 +177,7 @@ namespace StateManager
 		/// <param name="initialCall">最初に1回呼ぶ</param>
 		/// <param name="context">コンテキスト（指定不要ならnull）</param>
 		/// <returns>購読解除用Disposable</returns>
-		public IDisposable Subscribe(int id, Action<object> onUpdate, SynchronizationContext context = null, bool initialCall = true)
+		public IDisposable Subscribe(int id, Action<object, object> onUpdate, SynchronizationContext context = null, bool initialCall = true)
 		{
 			return stores.Get(id).Subscribe(onUpdate, context, initialCall);
 		}
@@ -192,7 +192,7 @@ namespace StateManager
 		/// <param name="initialCall">最初に1回呼ぶ</param>
 		/// <param name="context">コンテキスト（指定不要ならnull）</param>
 		/// <returns>購読解除用Disposable</returns>
-		public IDisposable Subscribe(string name, Action<object> onUpdate, SynchronizationContext context = null, bool initialCall = true)
+		public IDisposable Subscribe(string name, Action<object, object> onUpdate, SynchronizationContext context = null, bool initialCall = true)
 		{
 			return stores.Get(name).Subscribe(onUpdate, context, initialCall);
 		}
@@ -208,7 +208,7 @@ namespace StateManager
 		/// <param name="initialCall">最初に1回呼ぶ</param>
 		/// <param name="context">コンテキスト（指定不要ならnull）</param>
 		/// <returns>購読解除用Disposable</returns>
-		public IDisposable Subscribe(Type type, Action<object> onUpdate, SynchronizationContext context = null, bool initialCall = true)
+		public IDisposable Subscribe(Type type, Action<object, object> onUpdate, SynchronizationContext context = null, bool initialCall = true)
 		{
 			return stores.Get(type).Subscribe(onUpdate, context, initialCall);
 		}
@@ -224,7 +224,7 @@ namespace StateManager
 		/// <param name="context">コンテキスト（指定不要ならnull）</param>
 		/// <typeparam name="TState">ステートの型</typeparam>
 		/// <returns>購読解除用Disposable</returns>
-		public IDisposable Subscribe<TState>(int id, Action<TState> onUpdate, SynchronizationContext context = null, bool initialCall = true)
+		public IDisposable Subscribe<TState>(int id, Action<TState, TState> onUpdate, SynchronizationContext context = null, bool initialCall = true)
 		{
 			return stores.Get<TState>(id).AddBindState(onUpdate, context, initialCall);
 		}
@@ -240,7 +240,7 @@ namespace StateManager
 		/// <param name="context">コンテキスト（指定不要ならnull）</param>
 		/// <typeparam name="TState">ステートの型</typeparam>
 		/// <returns>購読解除用Disposable</returns>
-		public IDisposable Subscribe<TState>(string name, Action<TState> onUpdate, SynchronizationContext context = null, bool initialCall = true)
+		public IDisposable Subscribe<TState>(string name, Action<TState, TState> onUpdate, SynchronizationContext context = null, bool initialCall = true)
 		{
 			return stores.Get<TState>(name).AddBindState(onUpdate, context, initialCall);
 		}
@@ -256,7 +256,7 @@ namespace StateManager
 		/// <param name="context">コンテキスト（指定不要ならnull）</param>
 		/// <typeparam name="TState">ステートの型</typeparam>
 		/// <returns>購読解除用Disposable</returns>
-		public IDisposable Subscribe<TState>(Action<TState> onUpdate, SynchronizationContext context = null, bool initialCall = true)
+		public IDisposable Subscribe<TState>(Action<TState, TState> onUpdate, SynchronizationContext context = null, bool initialCall = true)
 		{
 			return stores.Get<TState>(typeof(TState)).AddBindState(onUpdate, context, initialCall);
 		}
@@ -266,7 +266,7 @@ namespace StateManager
 		/// </summary>
 		/// <typeparam name="TAction">アクションタイプ</typeparam>
 		public void Dispatch<TAction>()
-			where TAction : IAction
+			where TAction : ActionBase
 		{
 			DispatchInternal(GetNewAction<TAction>());
 		}

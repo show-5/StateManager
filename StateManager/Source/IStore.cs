@@ -40,7 +40,7 @@ namespace StateManager
 		/// <param name="initialCall">最初に1回呼ぶ</param>
 		/// <param name="context">コンテキスト</param>
 		/// <returns>解除用</returns>
-		IDisposable Subscribe(Action<object> onUpdate, SynchronizationContext context, bool initialCall);
+		IDisposable Subscribe(Action<object, object> onUpdate, SynchronizationContext context, bool initialCall);
 
 		/// <summary>
 		/// 更新関数リスト

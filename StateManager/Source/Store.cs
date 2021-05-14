@@ -12,7 +12,7 @@ namespace StateManager
 	public abstract class Store<TState> : IStore
 	{
 		private TState state;
-		private event Action<TState> OnUpdate;
+		private event Action<TState, TState> OnUpdate;
 		// private readonly object eventLock = new object();
 		private readonly object stateUpdateLock = new object();
 
@@ -62,28 +62,37 @@ namespace StateManager
 
 		Type IStore.StateType => typeof(TState);
 
-		internal IDisposable AddBindState(Action<TState> onUpdate, SynchronizationContext context, bool initialCall)
+		internal IDisposable AddBindState(Action<TState, TState> onUpdate, SynchronizationContext context, bool initialCall)
 		{
-			Action<TState> func;
+			Action<TState, TState> func;
 			if (context != null) {
-				func = state => context.Post(ss => onUpdate((TState)ss), state);
+				func = (oldState, newState) =>
+				{
+					if (SynchronizationContext.Current != context) {
+						context.Post(ss => onUpdate(oldState, newState), null);
+					}
+					else {
+						onUpdate(oldState, newState);
+					}
+				};
 			}
 			else {
 				func = onUpdate;
 			}
 			OnUpdate += func;
 			if (initialCall) {
-				func.Invoke(state);
+				func.Invoke(state, state);
 			}
-			return new DisposableObject<(Store<TState> store, Action<TState> callback)>(arg =>
+			return new DisposableObject<(Store<TState> store, Action<TState, TState> callback)>(arg =>
 			{
 				arg.store.OnUpdate -= arg.callback;
 			}, (this, func));
 		}
-		IDisposable IStore.Subscribe(Action<object> onUpdate, SynchronizationContext context, bool initialCall) => AddBindState((TState state) => onUpdate(state), context, initialCall);
+		IDisposable IStore.Subscribe(Action<object, object> onUpdate, SynchronizationContext context, bool initialCall) => AddBindState((TState oldState, TState newState) => onUpdate(oldState, newState), context, initialCall);
 
 		internal void Reduce(IReducer<TState> reducer, IAction action)
 		{
+			TState oldState = state;
 			TState newState;
 			bool update = false;
 			lock (stateUpdateLock) {
@@ -102,7 +111,7 @@ namespace StateManager
 			}
 
 			if (update) {
-				OnUpdate?.Invoke(newState);
+				OnUpdate?.Invoke(oldState, newState);
 			}
 		}
 		void IStore.Reduce(IReducer reducer, IAction action) => Reduce(reducer as IReducer<TState>, action);
