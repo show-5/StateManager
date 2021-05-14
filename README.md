@@ -24,8 +24,7 @@ Dispatcher dispatcher = new Dispatcher(new DispatcherInitializer()
 // 個別に登録
 Dispatcher dispatcher = new Dispatcher(new DispatcherInitializer()
 	.AddStore<FooStore>()
-	.AddEffect<FooEffect>()
-	.AddEffect<FooEffectAsync>());
+	.AddEffect<FooEffect>());
 ```
 
 - 現在の State を取得
