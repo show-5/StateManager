@@ -25,7 +25,7 @@ Dispatcher dispatcher = new Dispatcher(new DispatcherInitializer()
 Dispatcher dispatcher = new Dispatcher(new DispatcherInitializer()
 	.AddStore<FooStore>()
 	.AddEffect<FooEffect>()
-	.AddEffectAsync<FooEffectAsync>());
+	.AddEffect<FooEffectAsync>());
 ```
 
 - 現在の State を取得
@@ -38,15 +38,6 @@ IState state = dispatcher.GetState("State01");
 
 IState<FooState> state = dispatcher.GetState<FooState>();
 IState<FooState> state = dispatcher.GetState<FooState>("State01");
-
-// 内部で管理されているIDでもアクセスできます。
-int stateID = dispatcher.GetStateID("State01");
-// int stateID = dispatcher.GetStateID<FooState>();
-// if (dispatcher.TryGetStateID<FooState>(out stateID)) {}
-IState<FooState> state = dispatcher.GetState<FooState>(stateID);
-
-// 一覧取得
-IEnumerable<IState> states = dispatcher.GetStates();
 ```
 
 ## Store
@@ -247,7 +238,7 @@ State の変更を受け取ります。
 // 　第２引数：[Default=null]SynchronizationContext
 // 　第３引数：[Default=true]初期化用に１度呼び出すか
 IDisposable disposable = dispatcher.Subscribe<FooState>(
-	state => Console.WriteLine(state.Count.ToString()),
+	(oldState, newState) => Console.WriteLine(newState.Count.ToString()),
 	SynchronizationContext.Current,
 	true));
 
