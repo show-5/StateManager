@@ -12,15 +12,15 @@ namespace StateManager
 		private Dictionary<string, int> nameTable = new Dictionary<string, int>();
 		// private ConcurrentDictionary<Type, int> typeTable = new ConcurrentDictionary<Type, int>();
 		private ILookup<Type, int> typeTable;
-		/// <summary>
-		/// 上位16ビット
-		/// </summary>
-		private uint idUpper;
-		private static int idUpperBase = 100;
+
+		private const int IdBase = unchecked((int)0xdd5ffff1);
+		private int idXor;
+		private static int idUpperBase = 0;
 
 		public Stores()
 		{
-			idUpper = (uint)Interlocked.Increment(ref idUpperBase) << 16;
+			int upper = Interlocked.Increment(ref idUpperBase) << 16;
+			idXor = IdBase ^ upper;
 		}
 
 		public bool TryGetID(string name, out int id)
@@ -48,17 +48,12 @@ namespace StateManager
 		public bool TryGet(int id, out IStore store)
 		{
 			lock (stores) {
-				uint l = (uint)id & 0x0000ffff;
-				uint u = (uint)id & 0xffff0000;
-				if (u != idUpper) {
+				int index = id ^ idXor;
+				if (index < 0 || index >= stores.Length) {
 					store = default;
 					return false;
 				}
-				if (l < 0 || l >= stores.Length) {
-					store = default;
-					return false;
-				}
-				store = stores[(int)l];
+				store = stores[index];
 			}
 			return true;
 		}
@@ -83,17 +78,12 @@ namespace StateManager
 		public bool TryGet<TState>(int id, out Store<TState> store)
 		{
 			lock (stores) {
-				uint l = (uint)id & 0x0000ffff;
-				uint u = (uint)id & 0xffff0000;
-				if (u != idUpper) {
+				int index = id ^ idXor;
+				if (index < 0 || index >= stores.Length) {
 					store = default;
 					return false;
 				}
-				if (l < 0 || l >= stores.Length) {
-					store = default;
-					return false;
-				}
-				store = stores[(int)l] as Store<TState>;
+				store = stores[index] as Store<TState>;
 			}
 			if (store == null) {
 				return false;
@@ -137,12 +127,11 @@ namespace StateManager
 		}
 		public IStore Get(int id)
 		{
-			uint l = (uint)id & 0x0000ffff;
-			uint u = (uint)id & 0xffff0000;
-			if (u != idUpper) {
+			int index = id ^ idXor;
+			if (index < 0 || index >= stores.Length) {
 				throw new IndexOutOfRangeException();
 			}
-			return stores[(int)l];
+			return stores[index];
 		}
 		public IStore Get(string name)
 		{
@@ -154,12 +143,11 @@ namespace StateManager
 		}
 		public Store<TState> Get<TState>(int id)
 		{
-			uint l = (uint)id & 0x0000ffff;
-			uint u = (uint)id & 0xffff0000;
-			if (u != idUpper) {
+			int index = id ^ idXor;
+			if (index < 0 || index >= stores.Length) {
 				throw new IndexOutOfRangeException();
 			}
-			return (Store<TState>)stores[(int)l];
+			return (Store<TState>)stores[index];
 		}
 		public Store<TState> Get<TState>(string name)
 		{
@@ -172,7 +160,7 @@ namespace StateManager
 		public (IStore store, int id)[] Initialize(IEnumerable<IStore> strs)
 		{
 			stores = strs.ToArray();
-			var storeIDs = stores.Select((store, i) => (store: store, id: ((int)((uint)i | idUpper)))).ToArray();
+			var storeIDs = stores.Select((store, i) => (store: store, id: (i ^ idXor))).ToArray();
 			typeTable = storeIDs.ToLookup(si => si.store.StateType, si => si.id);
 			nameTable = storeIDs.Where(si => si.store.Name != null).ToDictionary(si => si.store.Name, si => si.id);
 			return storeIDs;
