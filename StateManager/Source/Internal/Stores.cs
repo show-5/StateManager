@@ -167,7 +167,7 @@ namespace StateManager
 		}
 		public IEnumerable<IState> GetStates()
 		{
-			return stores.Select(store => store.CreateStateReference());
+			return stores.Select(store => store.StateReference());
 		}
 	}
 }

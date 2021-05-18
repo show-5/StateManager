@@ -101,7 +101,7 @@ namespace StateManager
 		/// <returns>ステート</returns>
 		public IState GetState(int id)
 		{
-			return stores.Get(id).CreateStateReference();
+			return stores.Get(id).StateReference();
 		}
 
 		/// <summary>
@@ -111,7 +111,7 @@ namespace StateManager
 		/// <returns>ステート</returns>
 		public IState GetState(string name)
 		{
-			return stores.Get(name).CreateStateReference();
+			return stores.Get(name).StateReference();
 		}
 
 		/// <summary>
@@ -122,7 +122,7 @@ namespace StateManager
 		/// <returns>ステート</returns>
 		public IState GetState(Type type)
 		{
-			return stores.Get(type).CreateStateReference();
+			return stores.Get(type).StateReference();
 		}
 
 		/// <summary>
@@ -133,7 +133,7 @@ namespace StateManager
 		/// <returns>ステート</returns>
 		public IState<TState> GetState<TState>(int id)
 		{
-			return stores.Get<TState>(id).CreateStateReference();
+			return stores.Get<TState>(id).StateReference();
 		}
 
 		/// <summary>
@@ -144,7 +144,7 @@ namespace StateManager
 		/// <returns>ステート</returns>
 		public IState<TState> GetState<TState>(string name)
 		{
-			return stores.Get<TState>(name).CreateStateReference();
+			return stores.Get<TState>(name).StateReference();
 		}
 
 		/// <summary>
@@ -155,7 +155,7 @@ namespace StateManager
 		/// <returns>ステート</returns>
 		public IState<TState> GetState<TState>()
 		{
-			return stores.Get<TState>(typeof(TState)).CreateStateReference();
+			return stores.Get<TState>(typeof(TState)).StateReference();
 		}
 
 		/// <summary>

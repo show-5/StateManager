@@ -31,7 +31,7 @@ namespace StateManager
 		/// ステートへの参照を生成
 		/// </summary>
 		/// <returns>ステート</returns>
-		IState CreateStateReference();
+		IState StateReference();
 
 		/// <summary>
 		/// 変更通知

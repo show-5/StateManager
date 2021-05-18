@@ -11,7 +11,18 @@ namespace StateManager
 	/// <typeparam name="TState">ステート</typeparam>
 	public abstract class Store<TState> : IStore
 	{
-		private TState state;
+		// private TState state;
+		private State<TState> state_;
+		private State<TState> state
+		{
+			get
+			{
+				if (state_ == null) {
+					state_ = new State<TState>(InitialState());
+				}
+				return state_;
+			}
+		}
 		private event Action<TState, TState> OnUpdate;
 		// private readonly object eventLock = new object();
 		private readonly object stateUpdateLock = new object();
@@ -50,15 +61,16 @@ namespace StateManager
 		public abstract IReducer<TState>[] Reducers { get; }
 		IReducer[] IStore.Reducers => Reducers;
 
-		internal TState State => state;
+		// internal TState State => state;
+		internal TState State => state.Value;
 
 		/// <summary>
 		/// コンストラクタ
 		/// </summary>
-		protected Store()
-		{
-			state = InitialState();
-		}
+		// protected Store()
+		// {
+		// 	// state = InitialState();
+		// }
 
 		Type IStore.StateType => typeof(TState);
 
@@ -81,7 +93,7 @@ namespace StateManager
 			}
 			OnUpdate += func;
 			if (initialCall) {
-				func.Invoke(state, state);
+				func.Invoke(state.Value, state.Value);
 			}
 			return new DisposableObject<(Store<TState> store, Action<TState, TState> callback)>(arg =>
 			{
@@ -92,20 +104,20 @@ namespace StateManager
 
 		internal void Reduce(IReducer<TState> reducer, IAction action)
 		{
-			TState oldState = state;
+			TState oldState = state.Value;
 			TState newState;
 			bool update = false;
 			lock (stateUpdateLock) {
 				var rd = reducer as IReducer<TState>;
 				if (rd != null) {
-					newState = rd.Reduce(state, action);
+					newState = rd.Reduce(oldState, action);
 				}
 				else {
-					newState = (TState)reducer.Reduce(state, action);
+					newState = (TState)reducer.Reduce(oldState, action);
 				}
 				newState = Validate(newState);
-				if (!IsEquivalent(state, newState)) {
-					state = newState;
+				if (!IsEquivalent(oldState, newState)) {
+					state.Value = newState;
 					update = true;
 				}
 			}
@@ -116,8 +128,9 @@ namespace StateManager
 		}
 		void IStore.Reduce(IReducer reducer, IAction action) => Reduce(reducer as IReducer<TState>, action);
 
-		internal IState<TState> CreateStateReference() => new State<TState>(this);
-		IState IStore.CreateStateReference() => CreateStateReference();
-
+		// internal IState<TState> StateReference() => new State<TState>(this);
+		internal IState<TState> StateReference() => state;
+		IState IStore.StateReference() => StateReference();
 	}
+
 }
