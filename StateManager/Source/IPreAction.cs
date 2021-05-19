@@ -1,16 +1,16 @@
 ﻿namespace StateManager
 {
 	/// <summary>
-	/// アクションの実行関数
+	/// アクション実行前処理関数
 	/// </summary>
 	/// <typeparam name="TAction">アクションの型</typeparam>
-	public interface IEffect<TAction>
+	public interface IPreAction<TAction>
 		where TAction : IAction
 	{
 		/// <summary>
-		/// アクション実行
+		/// アクション実行前処理
 		/// </summary>
 		/// <param name="action">アクション</param>
-		void Effect(TAction action);
+		void PreAction(TAction action);
 	}
 }

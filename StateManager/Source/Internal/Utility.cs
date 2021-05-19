@@ -8,7 +8,7 @@ namespace StateManager
 {
 	internal static class Utility
 	{
-		public static IEnumerable<TOut> Execute<TIn, TOut>(this IEnumerable<TIn> e, Func<TIn, TOut> func)
+		public static TOut[] Execute<TIn, TOut>(this IEnumerable<TIn> e, Func<TIn, TOut> func)
 		{
 			return e.Select(func).ToArray();
 		}

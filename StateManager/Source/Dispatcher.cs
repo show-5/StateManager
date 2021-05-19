@@ -15,6 +15,8 @@ namespace StateManager
 		private Stores stores = new Stores();
 		private Dictionary<Type, IActionReceiver> actionReceivers = new Dictionary<Type, IActionReceiver>();
 		private static ConcurrentBag<List<Task>> waitListPool = new ConcurrentBag<List<Task>>();
+		private ConcurrentQueue<IAction> actionQueue = new ConcurrentQueue<IAction>();
+		private bool runningAction = false;
 
 		/// <summary>
 		/// Constructor.
@@ -23,8 +25,7 @@ namespace StateManager
 		public Dispatcher(DispatcherInitializer initializer)
 		{
 			InitializeStores(initializer.Stores);
-			InitializeEffects(initializer.Effects);
-			// InitializeEffectAsyncs(initializer.EffectAsyncs);
+			InitializeFunctionObjects(initializer.FunctionObjects);
 		}
 
 		/// <summary>
@@ -375,13 +376,29 @@ namespace StateManager
 			}, disposables);
 		}
 
-
-		private void DispatchInternal<TAction>(TAction action)
-			where TAction : IAction
+		private void DispatchInternal(IAction action)
 		{
-			IActionReceiver actionReceiver;
-			if (!actionReceivers.TryGetValue(action.GetType(), out actionReceiver)) { return; }
-			(actionReceiver as ActionReceiver<TAction>).Dispatch(action, this);
+			lock (actionQueue) {
+				if (runningAction) {
+					actionQueue.Enqueue(action);
+					return;
+				}
+				actionQueue.Enqueue(action);
+				runningAction = true;
+			}
+			while (true) {
+				IAction runAction;
+				lock (actionQueue) {
+					if (!actionQueue.TryDequeue(out runAction)) {
+						runningAction = false;
+						return;
+					}
+				}
+				IActionReceiver actionReceiver;
+				if (actionReceivers.TryGetValue(runAction.GetType(), out actionReceiver)) {
+					actionReceiver.Dispatch(runAction, this);
+				}
+			}
 		}
 
 		private TAction GetNewAction<TAction>()
@@ -401,32 +418,42 @@ namespace StateManager
 				GetOrAddActionReceiver(g.Key).SetReducers(g);
 			}
 		}
-		private void InitializeEffects(IEnumerable<Type> types)
+		private void InitializeFunctionObjects(IEnumerable<Type> types)
 		{
-			var typeInstances = types.Execute(type => (type: type, instance: Activator.CreateInstance(type)));
-			var effectGroup = typeInstances.SelectMany(ti => ti.type.GetGenericArgTypes(typeof(IEffect<>), 0)
-				.Select(actionType => (actionType: actionType, instance: ti.instance)))
-			.GroupBy(ti => ti.actionType, ti => ti.instance);
-			foreach (var g in effectGroup) {
-				GetOrAddActionReceiver(g.Key).SetEffects(g.OfType<IEffect>());
+			List<(Type actionType, FunctionObject obj)> effects = new List<(Type actionType, FunctionObject)>();
+			List<(Type actionType, FunctionObject obj)> effectAsyncs = new List<(Type actionType, FunctionObject obj)>();
+			List<(Type stateType, FunctionObject obj)> subscribes = new List<(Type stateType, FunctionObject obj)>();
+			List<(Type actionType, FunctionObject obj)> preActions = new List<(Type stateType, FunctionObject obj)>();
+
+			var functionObjects = types.Execute(t => Activator.CreateInstance(t) as FunctionObject);
+			foreach (var obj in functionObjects) {
+				obj.SetDispatcher(this);
+
+				var type = obj.GetType();
+				effects.AddRange(type.GetGenericArgTypes(typeof(IEffect<>), 0).Select(t => (t, obj)));
+				effectAsyncs.AddRange(type.GetGenericArgTypes(typeof(IEffectAsync<>), 0).Select(t => (t, obj)));
+				subscribes.AddRange(type.GetGenericArgTypes(typeof(ISubscribe<>), 0).Select(t => (t, obj)));
+				preActions.AddRange(type.GetGenericArgTypes(typeof(IPreAction<>), 0).Select(t => (t, obj)));
 			}
-			var effectAsyncGroup = typeInstances.SelectMany(ti => ti.type.GetGenericArgTypes(typeof(IEffectAsync<>), 0)
-				.Select(actionType => (actionType: actionType, instance: ti.instance)))
-			.GroupBy(ti => ti.actionType, ti => ti.instance);
-			foreach (var g in effectAsyncGroup) {
-				GetOrAddActionReceiver(g.Key).SetEffectAsyncs(g.OfType<IEffectAsync>());
+			if (effects.Count > 0) {
+				foreach (var g in effects.GroupBy(d => d.actionType, d => d.obj)) {
+					GetOrAddActionReceiver(g.Key).SetEffects(g);
+				}
+			}
+			if (effectAsyncs.Count > 0) {
+				foreach (var g in effectAsyncs.GroupBy(d => d.actionType, d => d.obj)) {
+					GetOrAddActionReceiver(g.Key).SetEffectAsyncs(g);
+				}
+			}
+			if (subscribes.Count > 0) {
+				stores.SetupSubscribes(subscribes.GroupBy(d => d.stateType, d => d.obj));
+			}
+			if (preActions.Count > 0) {
+				foreach (var g in preActions.GroupBy(d => d.actionType, d => d.obj)) {
+					GetOrAddActionReceiver(g.Key).SetPreActions(g);
+				}
 			}
 		}
-		// private void InitializeEffectAsyncs(IEnumerable<Type> types)
-		// {
-		// 	var typeInstances = types.Execute(type => (type: type, instance: Activator.CreateInstance(type) as IEffectAsync));
-		// 	var group = typeInstances.SelectMany(ti => ti.type.GetGenericArgTypes(typeof(IEffectAsync<>), 0)
-		// 		.Select(actionType => (actionType: actionType, instance: ti.instance)))
-		// 	.GroupBy(ti => ti.actionType, ti => ti.instance);
-		// 	foreach (var g in group) {
-		// 		GetOrAddActionReceiver(g.Key).SetEffectAsyncs(g);
-		// 	}
-		// }
 
 		private IActionReceiver GetOrAddActionReceiver(Type actionType)
 		{

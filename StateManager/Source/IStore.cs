@@ -46,5 +46,11 @@ namespace StateManager
 		/// 更新関数リスト
 		/// </summary>
 		IReducer[] Reducers { get; }
+
+		/// <summary>
+		/// 通知オブジェクト登録
+		/// </summary>
+		/// <param name="subscribes">通知オブジェクト</param>
+		void SetSubscribes(IEnumerable<object> subscribes);
 	}
 }

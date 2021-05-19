@@ -13,8 +13,7 @@ namespace StateManager
 	public class DispatcherInitializer
 	{
 		internal HashSet<Type> Stores { get; private set; } = new HashSet<Type>();
-		internal HashSet<Type> Effects { get; private set; } = new HashSet<Type>();
-		// internal HashSet<Type> EffectAsyncs { get; private set; } = new HashSet<Type>();
+		internal HashSet<Type> FunctionObjects { get; private set; } = new HashSet<Type>();
 
 		/// <summary>
 		/// アセンブリから自動でスキャン
@@ -30,23 +29,16 @@ namespace StateManager
 						if (typeof(IStore).IsAssignableFrom(type)) {
 							return (typeof(IStore), type);
 						}
-						if (typeof(IEffect).IsAssignableFrom(type)) {
-							return (typeof(IEffect), type);
+						if (typeof(FunctionObject).IsAssignableFrom(type)) {
+							return (typeof(FunctionObject), type);
 						}
-						// if (typeof(IEffectAsync).IsAssignableFrom(type)) {
-						// 	return (typeof(IEffectAsync), type);
-						// }
 					}
 					return (null, null);
 				})
 				.Where(d => d.Item1 != null)
 				.ToLookup(d => d.Item1, d => d.type);
-			// Stores = types[typeof(IStore)].Concat(Stores).ToHashSet();
-			// Effects = types[typeof(IEffector)].Concat(Effects).ToHashSet();
-			// EffectAsyncs = types[typeof(IAsyncEffector)].Concat(EffectAsyncs).ToHashSet();
 			Stores = new HashSet<Type>(types[typeof(IStore)].Concat(Stores));
-			Effects = new HashSet<Type>(types[typeof(IEffect)].Concat(Effects));
-			// EffectAsyncs = new HashSet<Type>(types[typeof(IEffectAsync)].Concat(EffectAsyncs));
+			FunctionObjects = new HashSet<Type>(types[typeof(FunctionObject)].Concat(FunctionObjects));
 			return this;
 		}
 
@@ -64,23 +56,12 @@ namespace StateManager
 		/// <summary>
 		/// 実行関数追加
 		/// </summary>
-		/// <typeparam name="TEffect">実行関数オブジェクト</typeparam>
+		/// <typeparam name="TFunctionObject">実行関数オブジェクト</typeparam>
 		/// <returns>自身</returns>
-		public DispatcherInitializer AddEffect<TEffect>() where TEffect : IEffect
+		public DispatcherInitializer AddEffect<TFunctionObject>() where TFunctionObject : FunctionObject
 		{
-			Effects.Add(typeof(TEffect));
+			FunctionObjects.Add(typeof(TFunctionObject));
 			return this;
 		}
-
-		// /// <summary>
-		// /// 実行関数追加
-		// /// </summary>
-		// /// <typeparam name="TEffectAsync">実行関数オブジェクト</typeparam>
-		// /// <returns>自身</returns>
-		// public DispatcherInitializer AddEffectAsync<TEffectAsync>() where TEffectAsync : IEffectAsync
-		// {
-		// 	EffectAsyncs.Add(typeof(IEffectAsync));
-		// 	return this;
-		// }
 	}
 }

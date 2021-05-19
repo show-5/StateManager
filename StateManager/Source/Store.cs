@@ -26,6 +26,7 @@ namespace StateManager
 		private event Action<TState, TState> OnUpdate;
 		// private readonly object eventLock = new object();
 		private readonly object stateUpdateLock = new object();
+		private ISubscribe<TState>[] subscribes;
 
 		/// <summary>
 		/// ステート名
@@ -123,6 +124,11 @@ namespace StateManager
 			}
 
 			if (update) {
+				if (subscribes != null) {
+					foreach (var subscribe in subscribes) {
+						subscribe.Subscribe(Name, oldState, newState);
+					}
+				}
 				OnUpdate?.Invoke(oldState, newState);
 			}
 		}
@@ -131,6 +137,11 @@ namespace StateManager
 		// internal IState<TState> StateReference() => new State<TState>(this);
 		internal IState<TState> StateReference() => state;
 		IState IStore.StateReference() => StateReference();
+
+		void IStore.SetSubscribes(IEnumerable<object> subscribes)
+		{
+			this.subscribes = subscribes.OfType<ISubscribe<TState>>().ToArray();
+		}
 	}
 
 }
