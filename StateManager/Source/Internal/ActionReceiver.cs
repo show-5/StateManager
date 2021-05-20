@@ -9,9 +9,10 @@ namespace StateManager
 	internal interface IActionReceiver
 	{
 		void SetReducers(IEnumerable<(IStore store, IReducer reducer)> reducers);
-		void SetEffects(IEnumerable<object> effects);
-		void SetEffectAsyncs(IEnumerable<object> effectAsyncs);
+		void SetExecuteActions(IEnumerable<object> executeActions);
+		void SetExecuteActionAsyncs(IEnumerable<object> executeActionAsyncs);
 		void SetPreActions(IEnumerable<object> preActions);
+		void SetPostActions(IEnumerable<object> postActions);
 		IDisposable AddCallbackDelegate(Delegate callback);
 		IDisposable AddCallbackAsyncDelegate(Delegate callback);
 		void Dispatch(IAction action, Dispatcher dispatcher);
@@ -20,9 +21,10 @@ namespace StateManager
 		where TAction : IAction
 	{
 		private (IStore store, IReducer reducer)[] Reducers = null;
-		private IEffect<TAction>[] Effects = null;
-		private IEffectAsync<TAction>[] EffectAsyncs = null;
+		private IExecuteAction<TAction>[] ExecuteActions = null;
+		private IExecuteActionAsync<TAction>[] ExecuteActionAsyncs = null;
 		private IPreAction<TAction>[] PreActions = null;
+		private IPostAction<TAction>[] PostActions = null;
 		private event Action<TAction, Dispatcher> Callback = null;
 		private event Func<TAction, Dispatcher, Task> CallbackAsync = null;
 		private static ConcurrentBag<List<Task>> WaitListPool = new ConcurrentBag<List<Task>>();
@@ -31,17 +33,21 @@ namespace StateManager
 		{
 			Reducers = reducers.ToArray();
 		}
-		public void SetEffects(IEnumerable<object> effects)
+		public void SetExecuteActions(IEnumerable<object> executeActions)
 		{
-			Effects = effects.Cast<IEffect<TAction>>().ToArray();
+			ExecuteActions = executeActions.Cast<IExecuteAction<TAction>>().ToArray();
 		}
-		public void SetEffectAsyncs(IEnumerable<object> effectAsyncs)
+		public void SetExecuteActionAsyncs(IEnumerable<object> executeActionAsyncs)
 		{
-			EffectAsyncs = effectAsyncs.Cast<IEffectAsync<TAction>>().ToArray();
+			ExecuteActionAsyncs = executeActionAsyncs.Cast<IExecuteActionAsync<TAction>>().ToArray();
 		}
 		public void SetPreActions(IEnumerable<object> preActions)
 		{
 			PreActions = preActions.Cast<IPreAction<TAction>>().ToArray();
+		}
+		public void SetPostActions(IEnumerable<object> postActions)
+		{
+			PostActions = postActions.Cast<IPostAction<TAction>>().ToArray();
 		}
 
 		public IDisposable AddCallback(Action<TAction, Dispatcher> callback)
@@ -80,18 +86,18 @@ namespace StateManager
 					reducer.store.Reduce(reducer.reducer, action);
 				}
 			}
-			if (Effects != null) {
-				foreach (var effect in Effects) {
-					effect.Effect(action);
+			if (ExecuteActions != null) {
+				foreach (var executeAction in ExecuteActions) {
+					executeAction.ExecuteAction(action);
 				}
 			}
 			Callback?.Invoke(action, dispatcher);
 
-			if (EffectAsyncs != null || CallbackAsync != null) {
-				_ = ExecuteEffects(action, dispatcher);
+			if (ExecuteActionAsyncs != null || CallbackAsync != null) {
+				_ = ExecuteExecuteActions(action, dispatcher);
 			}
 			else {
-				ReturnAction(action);
+				PostAction(action);
 			}
 		}
 		public void Dispatch(IAction action, Dispatcher dispatcher)
@@ -99,15 +105,15 @@ namespace StateManager
 			Dispatch((TAction)action, dispatcher);
 		}
 
-		private async Task ExecuteEffects(TAction action, Dispatcher dispatcher)
+		private async Task ExecuteExecuteActions(TAction action, Dispatcher dispatcher)
 		{
 			List<Task> waitList;
 			if (!WaitListPool.TryTake(out waitList)) {
 				waitList = new List<Task>();
 			}
-			if (EffectAsyncs != null) {
-				foreach (var effect in EffectAsyncs) {
-					waitList.Add(effect.Effect(action));
+			if (ExecuteActionAsyncs != null) {
+				foreach (var executeAction in ExecuteActionAsyncs) {
+					waitList.Add(executeAction.ExecuteAction(action));
 				}
 			}
 			var callback = CallbackAsync;
@@ -119,11 +125,17 @@ namespace StateManager
 			}
 			waitList.Clear();
 			WaitListPool.Add(waitList);
-			ReturnAction(action);
+			PostAction(action);
 		}
 
-		private static void ReturnAction(TAction action)
+		private void PostAction(TAction action)
 		{
+			if (PostActions != null) {
+				foreach (var postAction in PostActions) {
+					postAction.PostAction(action);
+				}
+			}
+
 			ActionPool<TAction>.Return(action);
 		}
 	}

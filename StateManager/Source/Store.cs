@@ -24,7 +24,6 @@ namespace StateManager
 			}
 		}
 		private event Action<TState, TState> OnUpdate;
-		// private readonly object eventLock = new object();
 		private readonly object stateUpdateLock = new object();
 		private ISubscribe<TState>[] subscribes;
 
@@ -43,9 +42,10 @@ namespace StateManager
 		/// <summary>
 		/// 値のチェック
 		/// </summary>
-		/// <param name="state">ステート</param>
+		/// <param name="oldState">変更前ステート</param>
+		/// <param name="newState">ステート</param>
 		/// <returns>変更後のステート</returns>
-		public virtual TState Validate(TState state) => state;
+		public virtual TState Validate(TState oldState, TState newState) => newState;
 
 		/// <summary>
 		/// 値が等しいか
@@ -64,14 +64,6 @@ namespace StateManager
 
 		// internal TState State => state;
 		internal TState State => state.Value;
-
-		/// <summary>
-		/// コンストラクタ
-		/// </summary>
-		// protected Store()
-		// {
-		// 	// state = InitialState();
-		// }
 
 		Type IStore.StateType => typeof(TState);
 
@@ -116,7 +108,7 @@ namespace StateManager
 				else {
 					newState = (TState)reducer.Reduce(oldState, action);
 				}
-				newState = Validate(newState);
+				newState = Validate(oldState, newState);
 				if (!IsEquivalent(oldState, newState)) {
 					state.Value = newState;
 					update = true;
@@ -134,7 +126,6 @@ namespace StateManager
 		}
 		void IStore.Reduce(IReducer reducer, IAction action) => Reduce(reducer as IReducer<TState>, action);
 
-		// internal IState<TState> StateReference() => new State<TState>(this);
 		internal IState<TState> StateReference() => state;
 		IState IStore.StateReference() => StateReference();
 

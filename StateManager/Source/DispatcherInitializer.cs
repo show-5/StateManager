@@ -58,7 +58,7 @@ namespace StateManager
 		/// </summary>
 		/// <typeparam name="TFunctionObject">実行関数オブジェクト</typeparam>
 		/// <returns>自身</returns>
-		public DispatcherInitializer AddEffect<TFunctionObject>() where TFunctionObject : FunctionObject
+		public DispatcherInitializer AddFunctionObject<TFunctionObject>() where TFunctionObject : FunctionObject
 		{
 			FunctionObjects.Add(typeof(TFunctionObject));
 			return this;

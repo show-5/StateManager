@@ -387,16 +387,16 @@ namespace StateManager
 				runningAction = true;
 			}
 			while (true) {
-				IAction runAction;
+				IAction executeAction;
 				lock (actionQueue) {
-					if (!actionQueue.TryDequeue(out runAction)) {
+					if (!actionQueue.TryDequeue(out executeAction)) {
 						runningAction = false;
 						return;
 					}
 				}
 				IActionReceiver actionReceiver;
-				if (actionReceivers.TryGetValue(runAction.GetType(), out actionReceiver)) {
-					actionReceiver.Dispatch(runAction, this);
+				if (actionReceivers.TryGetValue(executeAction.GetType(), out actionReceiver)) {
+					actionReceiver.Dispatch(executeAction, this);
 				}
 			}
 		}
@@ -420,37 +420,52 @@ namespace StateManager
 		}
 		private void InitializeFunctionObjects(IEnumerable<Type> types)
 		{
-			List<(Type actionType, FunctionObject obj)> effects = new List<(Type actionType, FunctionObject)>();
-			List<(Type actionType, FunctionObject obj)> effectAsyncs = new List<(Type actionType, FunctionObject obj)>();
 			List<(Type stateType, FunctionObject obj)> subscribes = new List<(Type stateType, FunctionObject obj)>();
+			List<(Type actionType, FunctionObject obj)> executeActions = new List<(Type actionType, FunctionObject)>();
+			List<(Type actionType, FunctionObject obj)> executeActionAsyncs = new List<(Type actionType, FunctionObject obj)>();
 			List<(Type actionType, FunctionObject obj)> preActions = new List<(Type stateType, FunctionObject obj)>();
+			List<(Type actionType, FunctionObject obj)> postActions = new List<(Type stateType, FunctionObject obj)>();
 
 			var functionObjects = types.Execute(t => Activator.CreateInstance(t) as FunctionObject);
 			foreach (var obj in functionObjects) {
 				obj.SetDispatcher(this);
 
+				var lookup = obj.GetType().GetGenericInterfaceArgTypes(
+					(typeof(ISubscribe<>), 0),
+					(typeof(IExecuteAction<>), 0),
+					(typeof(IExecuteActionAsync<>), 0),
+					(typeof(ISubscribe<>), 0),
+					(typeof(IPostAction<>), 0)
+				);
+
 				var type = obj.GetType();
-				effects.AddRange(type.GetGenericArgTypes(typeof(IEffect<>), 0).Select(t => (t, obj)));
-				effectAsyncs.AddRange(type.GetGenericArgTypes(typeof(IEffectAsync<>), 0).Select(t => (t, obj)));
-				subscribes.AddRange(type.GetGenericArgTypes(typeof(ISubscribe<>), 0).Select(t => (t, obj)));
-				preActions.AddRange(type.GetGenericArgTypes(typeof(IPreAction<>), 0).Select(t => (t, obj)));
-			}
-			if (effects.Count > 0) {
-				foreach (var g in effects.GroupBy(d => d.actionType, d => d.obj)) {
-					GetOrAddActionReceiver(g.Key).SetEffects(g);
-				}
-			}
-			if (effectAsyncs.Count > 0) {
-				foreach (var g in effectAsyncs.GroupBy(d => d.actionType, d => d.obj)) {
-					GetOrAddActionReceiver(g.Key).SetEffectAsyncs(g);
-				}
+				subscribes.AddRange(lookup[typeof(ISubscribe<>)].Select(t => (t, obj)));
+				executeActions.AddRange(lookup[typeof(IExecuteAction<>)].Select(t => (t, obj)));
+				executeActionAsyncs.AddRange(lookup[typeof(IExecuteActionAsync<>)].Select(t => (t, obj)));
+				preActions.AddRange(lookup[typeof(IPreAction<>)].Select(t => (t, obj)));
+				postActions.AddRange(lookup[typeof(IPostAction<>)].Select(t => (t, obj)));
 			}
 			if (subscribes.Count > 0) {
 				stores.SetupSubscribes(subscribes.GroupBy(d => d.stateType, d => d.obj));
 			}
+			if (executeActions.Count > 0) {
+				foreach (var g in executeActions.GroupBy(d => d.actionType, d => d.obj)) {
+					GetOrAddActionReceiver(g.Key).SetExecuteActions(g);
+				}
+			}
+			if (executeActionAsyncs.Count > 0) {
+				foreach (var g in executeActionAsyncs.GroupBy(d => d.actionType, d => d.obj)) {
+					GetOrAddActionReceiver(g.Key).SetExecuteActionAsyncs(g);
+				}
+			}
 			if (preActions.Count > 0) {
 				foreach (var g in preActions.GroupBy(d => d.actionType, d => d.obj)) {
 					GetOrAddActionReceiver(g.Key).SetPreActions(g);
+				}
+			}
+			if (postActions.Count > 0) {
+				foreach (var g in postActions.GroupBy(d => d.actionType, d => d.obj)) {
+					GetOrAddActionReceiver(g.Key).SetPostActions(g);
 				}
 			}
 		}

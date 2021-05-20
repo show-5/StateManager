@@ -31,5 +31,13 @@ namespace StateManager
 			}
 			return null;
 		}
+		public static ILookup<Type, Type> GetGenericInterfaceArgTypes(this Type type, params (Type genericDefType, int argIndex)[] args)
+		{
+			return type.GetInterfaces()
+				.Where(it => it.IsGenericType)
+				.Select(it => (it: it, arg: args.FirstOrDefault(arg => arg.genericDefType == it.GetGenericTypeDefinition())))
+				.Where(data => data.arg.genericDefType != null)
+				.ToLookup(data => data.arg.genericDefType, data => data.it.GetGenericArguments()[data.arg.argIndex]);
+		}
 	}
 }
