@@ -4,13 +4,13 @@ namespace StateManager
 {
 	internal class DisposableObject<TValue> : IDisposable
 	{
-		private Action<TValue> disposeAction;
 		private TValue value;
+		private Action<TValue> disposeAction;
 
-		public DisposableObject(Action<TValue> disposeAction, TValue value)
+		public DisposableObject(TValue value, Action<TValue> disposeAction)
 		{
-			this.disposeAction = disposeAction;
 			this.value = value;
+			this.disposeAction = disposeAction;
 		}
 
 		public void Dispose()

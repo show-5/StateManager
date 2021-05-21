@@ -165,11 +165,19 @@ namespace StateManager
 			nameTable = storeIDs.Where(si => si.store.Name != null).ToDictionary(si => si.store.Name, si => si.id);
 			return storeIDs;
 		}
-		public void SetupSubscribes(IEnumerable<IGrouping<Type, object>> subscribes)
+		public void AddSubscribes(FunctionDataType type, IEnumerable<IGrouping<Type, object>> subscribes)
 		{
 			foreach (var g in subscribes) {
 				foreach (var index in typeTable[g.Key].Select(id => id ^ idXor)) {
-					stores[index].SetSubscribes(g);
+					stores[index].AddSubscribes(type, g);
+				}
+			}
+		}
+		public void RemoveSubscribes(FunctionDataType type, IEnumerable<IGrouping<Type, object>> subscribes)
+		{
+			foreach (var g in subscribes) {
+				foreach (var index in typeTable[g.Key].Select(id => id ^ idXor)) {
+					stores[index].RemoveSubscribes(type, g);
 				}
 			}
 		}

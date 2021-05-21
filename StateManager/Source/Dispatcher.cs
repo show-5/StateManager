@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,6 +18,23 @@ namespace StateManager
 		private static ConcurrentBag<List<Task>> waitListPool = new ConcurrentBag<List<Task>>();
 		private ConcurrentQueue<IAction> actionQueue = new ConcurrentQueue<IAction>();
 		private bool runningAction = false;
+
+		private enum FuncInterface
+		{
+			Subscribe,
+			ExecuteAction,
+			ExecuteActionAsync,
+			PreAction,
+			PostAction,
+			_Count_,
+		}
+		private static readonly (Type, int)[] FuncInterfaceGeneric = new (Type, int)[(int)FuncInterface._Count_] {
+			(typeof(ISubscribe<>), 0),
+			(typeof(IExecuteAction<>), 0),
+			(typeof(IExecuteActionAsync<>), 0),
+			(typeof(IPreAction<>), 0),
+			(typeof(IPostAction<>), 0)
+		};
 
 		/// <summary>
 		/// Constructor.
@@ -180,7 +198,7 @@ namespace StateManager
 		/// <returns>購読解除用Disposable</returns>
 		public IDisposable Subscribe(int id, Action<object, object> onUpdate, SynchronizationContext context = null, bool initialCall = true)
 		{
-			return stores.Get(id).Subscribe(onUpdate, context, initialCall);
+			return stores.Get(id).Subscribe(this, onUpdate, context, initialCall);
 		}
 
 		/// <summary>
@@ -195,7 +213,7 @@ namespace StateManager
 		/// <returns>購読解除用Disposable</returns>
 		public IDisposable Subscribe(string name, Action<object, object> onUpdate, SynchronizationContext context = null, bool initialCall = true)
 		{
-			return stores.Get(name).Subscribe(onUpdate, context, initialCall);
+			return stores.Get(name).Subscribe(this, onUpdate, context, initialCall);
 		}
 
 		/// <summary>
@@ -211,7 +229,7 @@ namespace StateManager
 		/// <returns>購読解除用Disposable</returns>
 		public IDisposable Subscribe(Type type, Action<object, object> onUpdate, SynchronizationContext context = null, bool initialCall = true)
 		{
-			return stores.Get(type).Subscribe(onUpdate, context, initialCall);
+			return stores.Get(type).Subscribe(this, onUpdate, context, initialCall);
 		}
 
 		/// <summary>
@@ -227,7 +245,7 @@ namespace StateManager
 		/// <returns>購読解除用Disposable</returns>
 		public IDisposable Subscribe<TState>(int id, Action<TState, TState> onUpdate, SynchronizationContext context = null, bool initialCall = true)
 		{
-			return stores.Get<TState>(id).AddBindState(onUpdate, context, initialCall);
+			return stores.Get<TState>(id).AddBindState(this, onUpdate, context, initialCall);
 		}
 
 		/// <summary>
@@ -243,7 +261,7 @@ namespace StateManager
 		/// <returns>購読解除用Disposable</returns>
 		public IDisposable Subscribe<TState>(string name, Action<TState, TState> onUpdate, SynchronizationContext context = null, bool initialCall = true)
 		{
-			return stores.Get<TState>(name).AddBindState(onUpdate, context, initialCall);
+			return stores.Get<TState>(name).AddBindState(this, onUpdate, context, initialCall);
 		}
 
 		/// <summary>
@@ -259,7 +277,7 @@ namespace StateManager
 		/// <returns>購読解除用Disposable</returns>
 		public IDisposable Subscribe<TState>(Action<TState, TState> onUpdate, SynchronizationContext context = null, bool initialCall = true)
 		{
-			return stores.Get<TState>(typeof(TState)).AddBindState(onUpdate, context, initialCall);
+			return stores.Get<TState>(typeof(TState)).AddBindState(this, onUpdate, context, initialCall);
 		}
 
 		/// <summary>
@@ -325,7 +343,7 @@ namespace StateManager
 		public IDisposable RegisterActionCallback<TAction>(Action<TAction, Dispatcher> callback)
 			where TAction : IAction
 		{
-			return GetOrAddActionReceiver<TAction>().AddCallback(callback);
+			return RegisterFunctions(new ExecuteActionFunc<TAction>(this, callback));
 		}
 
 		/// <summary>
@@ -337,43 +355,63 @@ namespace StateManager
 		public IDisposable RegisterActionCallback<TAction>(Func<TAction, Dispatcher, Task> callback)
 			where TAction : IAction
 		{
-			return GetOrAddActionReceiver<TAction>().AddCallback(callback);
+			return RegisterFunctions(new ExecuteActionAsyncFunc<TAction>(this, callback));
 		}
 
 		/// <summary>
-		/// コールバックオブジェクト登録
+		/// ReflectStateAttribute が設定されたフィールドにステートを設定
 		/// </summary>
-		/// <param name="callbackObject">
-		/// コーバックオブジェクト<br/>
-		/// IActionCallback&lt;&gt;、IActionCallbackAsync&lt;&gt;を継承
-		/// </param>
-		/// <returns></returns>
-		public IDisposable RegisterActionCallback(object callbackObject)
+		/// <param name="o">設定先のオブジェクト</param>
+		public void SetReflectState<T>(T o)
+			where T : class
 		{
-			List<IDisposable> disposables = new List<IDisposable>();
-			var type = callbackObject.GetType();
-			foreach (var iType in type.GetInterfaces()) {
-				if (!iType.IsGenericType) { continue; }
-				var iDef = iType.GetGenericTypeDefinition();
-				if (iDef == typeof(IActionCallback<>)) {
-					var actionType = iType.GenericTypeArguments[0];
-					var callback = ActionCallbackDelegateCreater.CreateCallbackDelegate(actionType, callbackObject);
-					disposables.Add(GetOrAddActionReceiver(actionType).AddCallbackDelegate(callback));
-					continue;
+			if (o == null) { return; }
+			ReflectStateFields.Reflect(this, o);
+		}
+		/// <summary>
+		/// ReflectStateAttribute が設定されたフィールドにステートを設定
+		/// </summary>
+		/// <param name="o">設定先のオブジェクト</param>
+		public void SetReflectState<T>(ref T o)
+			where T : struct
+		{
+			object obj = o;
+			ReflectStateFields.Reflect(this, obj);
+			o = (T)obj;
+		}
+
+		/// <summary>
+		/// オブジェクトが持つ以下のインターフェースの関数を登録<br/>
+		/// ISubscribe<br/>
+		/// IExecuteAction<br/>
+		/// IExecuteActionAsync<br/> 
+		/// IPreAction<br/>
+		/// IPostAction<br/>
+		/// </summary>
+		/// <param name="objs">オブジェクト（複数同時登録できます）</param>
+		/// <returns>解除用Disposable</returns>
+		public IDisposable RegisterFunctions(params object[] objs)
+		{
+			return new DisposableObject<(Dispatcher self, ILookup<Type, object>[] list)>(
+				(this, RegisterFunctionsInternal(FunctionDataType.Flexible, objs)),
+				args =>
+				{
+					args.self.stores.RemoveSubscribes(FunctionDataType.Flexible, args.list[(int)FuncInterface.Subscribe]);
+
+					foreach (var g in args.list[(int)FuncInterface.ExecuteAction]) {
+						args.self.GetOrAddActionReceiver(g.Key).RemoveExecuteActions(FunctionDataType.Flexible, g);
+					}
+					foreach (var g in args.list[(int)FuncInterface.ExecuteActionAsync]) {
+						args.self.GetOrAddActionReceiver(g.Key).RemoveExecuteActionAsyncs(FunctionDataType.Flexible, g);
+					}
+					foreach (var g in args.list[(int)FuncInterface.PreAction]) {
+						args.self.GetOrAddActionReceiver(g.Key).RemovePreActions(FunctionDataType.Flexible, g);
+					}
+					foreach (var g in args.list[(int)FuncInterface.PostAction]) {
+						args.self.GetOrAddActionReceiver(g.Key).RemovePostActions(FunctionDataType.Flexible, g);
+					}
 				}
-				if (iDef == typeof(IActionCallbackAsync<>)) {
-					var actionType = iType.GenericTypeArguments[0];
-					var callback = ActionCallbackDelegateCreater.CreateCallbackAsyncDelegate(actionType, callbackObject);
-					disposables.Add(GetOrAddActionReceiver(actionType).AddCallbackAsyncDelegate(callback));
-					continue;
-				}
-			}
-			return new DisposableObject<List<IDisposable>>(list =>
-			{
-				foreach (var d in list) {
-					d.Dispose();
-				}
-			}, disposables);
+			);
 		}
 
 		private void DispatchInternal(IAction action)
@@ -386,18 +424,23 @@ namespace StateManager
 				actionQueue.Enqueue(action);
 				runningAction = true;
 			}
-			while (true) {
-				IAction executeAction;
-				lock (actionQueue) {
-					if (!actionQueue.TryDequeue(out executeAction)) {
-						runningAction = false;
-						return;
+			try {
+				while (true) {
+					IAction executeAction;
+					lock (actionQueue) {
+						if (!actionQueue.TryDequeue(out executeAction)) {
+							runningAction = false;
+							return;
+						}
+					}
+					IActionReceiver actionReceiver;
+					if (actionReceivers.TryGetValue(executeAction.GetType(), out actionReceiver)) {
+						actionReceiver.Dispatch(executeAction, this);
 					}
 				}
-				IActionReceiver actionReceiver;
-				if (actionReceivers.TryGetValue(executeAction.GetType(), out actionReceiver)) {
-					actionReceiver.Dispatch(executeAction, this);
-				}
+			}
+			finally {
+				runningAction = false;
 			}
 		}
 
@@ -420,54 +463,7 @@ namespace StateManager
 		}
 		private void InitializeFunctionObjects(IEnumerable<Type> types)
 		{
-			List<(Type stateType, FunctionObject obj)> subscribes = new List<(Type stateType, FunctionObject obj)>();
-			List<(Type actionType, FunctionObject obj)> executeActions = new List<(Type actionType, FunctionObject)>();
-			List<(Type actionType, FunctionObject obj)> executeActionAsyncs = new List<(Type actionType, FunctionObject obj)>();
-			List<(Type actionType, FunctionObject obj)> preActions = new List<(Type stateType, FunctionObject obj)>();
-			List<(Type actionType, FunctionObject obj)> postActions = new List<(Type stateType, FunctionObject obj)>();
-
-			var functionObjects = types.Execute(t => Activator.CreateInstance(t) as FunctionObject);
-			foreach (var obj in functionObjects) {
-				obj.SetDispatcher(this);
-
-				var lookup = obj.GetType().GetGenericInterfaceArgTypes(
-					(typeof(ISubscribe<>), 0),
-					(typeof(IExecuteAction<>), 0),
-					(typeof(IExecuteActionAsync<>), 0),
-					(typeof(ISubscribe<>), 0),
-					(typeof(IPostAction<>), 0)
-				);
-
-				var type = obj.GetType();
-				subscribes.AddRange(lookup[typeof(ISubscribe<>)].Select(t => (t, obj)));
-				executeActions.AddRange(lookup[typeof(IExecuteAction<>)].Select(t => (t, obj)));
-				executeActionAsyncs.AddRange(lookup[typeof(IExecuteActionAsync<>)].Select(t => (t, obj)));
-				preActions.AddRange(lookup[typeof(IPreAction<>)].Select(t => (t, obj)));
-				postActions.AddRange(lookup[typeof(IPostAction<>)].Select(t => (t, obj)));
-			}
-			if (subscribes.Count > 0) {
-				stores.SetupSubscribes(subscribes.GroupBy(d => d.stateType, d => d.obj));
-			}
-			if (executeActions.Count > 0) {
-				foreach (var g in executeActions.GroupBy(d => d.actionType, d => d.obj)) {
-					GetOrAddActionReceiver(g.Key).SetExecuteActions(g);
-				}
-			}
-			if (executeActionAsyncs.Count > 0) {
-				foreach (var g in executeActionAsyncs.GroupBy(d => d.actionType, d => d.obj)) {
-					GetOrAddActionReceiver(g.Key).SetExecuteActionAsyncs(g);
-				}
-			}
-			if (preActions.Count > 0) {
-				foreach (var g in preActions.GroupBy(d => d.actionType, d => d.obj)) {
-					GetOrAddActionReceiver(g.Key).SetPreActions(g);
-				}
-			}
-			if (postActions.Count > 0) {
-				foreach (var g in postActions.GroupBy(d => d.actionType, d => d.obj)) {
-					GetOrAddActionReceiver(g.Key).SetPostActions(g);
-				}
-			}
+			RegisterFunctionsInternal(FunctionDataType.Fixed, types.Execute(t => Activator.CreateInstance(t)));
 		}
 
 		private IActionReceiver GetOrAddActionReceiver(Type actionType)
@@ -486,5 +482,40 @@ namespace StateManager
 			return GetOrAddActionReceiver(typeof(TAction)) as ActionReceiver<TAction>;
 		}
 
+		private ILookup<Type, object>[] RegisterFunctionsInternal(FunctionDataType functionDataType, IEnumerable<object> objs)
+		{
+			List<(Type dataType, object obj)>[] typeObjs = new List<(Type dataType, object obj)>[(int)FuncInterface._Count_];
+			for (int i = 0; i < typeObjs.Length; ++i) {
+				typeObjs[i] = new List<(Type dataType, object obj)>();
+			};
+
+			foreach (var obj in objs) {
+				if (obj is FunctionObject fo) {
+					fo.SetDispatcher(this);
+				}
+				var lookup = obj.GetType().GetGenericInterfaceArgTypes(FuncInterfaceGeneric);
+				for (int i = 0; i < typeObjs.Length; ++i) {
+					typeObjs[i].AddRange(lookup[FuncInterfaceGeneric[i].Item1].Select(t => (t, obj)));
+				}
+			}
+			var list = typeObjs.Select(to => to.ToLookup(d => d.dataType, d => d.obj)).ToArray();
+
+			stores.AddSubscribes(functionDataType, list[(int)FuncInterface.Subscribe]);
+
+			foreach (var g in list[(int)FuncInterface.ExecuteAction]) {
+				GetOrAddActionReceiver(g.Key).AddExecuteActions(functionDataType, g);
+			}
+			foreach (var g in list[(int)FuncInterface.ExecuteActionAsync]) {
+				GetOrAddActionReceiver(g.Key).AddExecuteActionAsyncs(functionDataType, g);
+			}
+			foreach (var g in list[(int)FuncInterface.PreAction]) {
+				GetOrAddActionReceiver(g.Key).AddPreActions(functionDataType, g);
+			}
+			foreach (var g in list[(int)FuncInterface.PostAction]) {
+				GetOrAddActionReceiver(g.Key).AddPostActions(functionDataType, g);
+			}
+
+			return list;
+		}
 	}
 }
