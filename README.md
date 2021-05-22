@@ -176,7 +176,7 @@ public class Functions : FunctionObject
 	{
 	}
 	// State 変更時
-	public void Subscribe(string stateName, TState oldState, TState newState)
+	public void Subscribe(string stateName, FooState oldState, FooState newState)
 	{
 	}
 }
