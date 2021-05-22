@@ -187,7 +187,8 @@ public class Functions : FunctionObject
 
 FunctionObject を使用しない場合や DIspatcherInitializer に登録しない場合、  
 インスタンスを直接登録することが出来ます。  
-この方法の場合、解除も可能です。
+この方法の場合、解除も可能です。  
+これにより、Action をメッセージのように扱う事もできます。
 ```C#
 // 戻り値を Dispose() することで解除する。
 // 受け取らなかった場合GCで破棄された時解除される。
