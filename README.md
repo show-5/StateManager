@@ -197,6 +197,6 @@ IDisposable disposable = dispatcher.RegisterFunctions(instance);
 
 ## Other
 
-Subscribe - State の変更を受け取る関数を登録
-RegisterActionCallback - アクションの実行時に呼び出される関数を登録
-ReflectStateAttribute、SetReflectState - IState<> のフィールドに自動で設定
+- Subscribe - State の変更を受け取る関数を登録
+- RegisterActionCallback - アクションの実行時に呼び出される関数を登録
+- ReflectStateAttribute、SetReflectState - IState<> のフィールドに自動で設定
