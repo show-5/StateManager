@@ -144,9 +144,9 @@ dispatcher.Dispatch<FooAction, string>(text, (action, value) => action.SetValue(
 
 ## Functions
 
-FunctionObjectを継承した場合、DispatcherInitialize に登録することが出来ます。 
-その場合、引数なしのコンストラクタを使用してインスタンスが生成されます。 
-また、 DispatcherInitialize.ScanAssembly では自動で登録されます。 
+FunctionObjectを継承した場合、DispatcherInitialize に登録することが出来ます。  
+その場合、引数なしのコンストラクタを使用してインスタンスが生成されます。  
+また、 DispatcherInitialize.ScanAssembly では自動で登録されます。
 
 ```C#
 public class Functions : FunctionObject
@@ -182,8 +182,8 @@ public class Functions : FunctionObject
 }
 ```
 
-FunctionObject を使用しない場合や DIspatcherInitializer に登録しない場合、 
-インスタンスを直接登録することが出来ます。
+FunctionObject を使用しない場合や DIspatcherInitializer に登録しない場合、  
+インスタンスを直接登録することが出来ます。  
 この方法の場合、解除も可能です。
 ```C#
 // 戻り値を Dispose() することで解除する。
