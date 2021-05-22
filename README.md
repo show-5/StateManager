@@ -161,20 +161,24 @@ public class Functions : FunctionObject
 	public void ExecuteAction(A_Action action)
 	{
 	}
+
 	// IExecuteActionAsync を継承した場合非同期にできます。
 	public async Task ExecuteAction(B_Action action)
 	{
 	}
+
 	// アクション実行前
 	// Reduce より前
 	public void PreAction(C_Action action)
 	{
 	}
+
 	// アクション実行後
 	// 全ての非同期関数まで終了した後
 	public void PostAction(D_Action action)
 	{
 	}
+
 	// State 変更時
 	public void Subscribe(string stateName, FooState oldState, FooState newState)
 	{
