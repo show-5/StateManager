@@ -5,9 +5,8 @@ C# の Flux 風状態管理
 - [Dispatcher](#dispatcher)
 - [Store](#store)
 - [Action](#action)
-- [ExecuteAction](#executeaction)
-- [ActionCallback](#actioncallback)
-- [Subscribe](#subscribe)
+- [Functions](#functions)
+- [Other](#other)
 
 ## Dispatcher
 
@@ -143,100 +142,57 @@ string text = "abcde";
 dispatcher.Dispatch<FooAction, string>(text, (action, value) => action.SetValue(value));
 ```
 
-## ExecuteAction
+## Functions
 
-副作用のある処理などはこちら
+FunctionObjectを継承した場合、DispatcherInitialize に登録することが出来ます。 
+その場合、引数なしのコンストラクタを使用してインスタンスが生成されます。 
+また、 DispatcherInitialize.ScanAssembly では自動で登録されます。 
 
 ```C#
-public class Effects
-	: IEffect<FooAction>
-	, IEffectAsync<FooBarAction>
+public class Functions : FunctionObject
+	: IExecuteAction<A_Action>
+	, IExecuteActionAsync<B_Action>
+	, IPreAction<C_Action>
+	, IPostAction<D_Action>
+	, ISubscribe<FooState>
 {
-	public void Effect(FooAction action, Dispatcher dispatcher)
+	// アクション実行時
+	// Store の Reduce 関数実行後
+	public void ExecuteAction(A_Action action)
 	{
 	}
-	public async Task Effect(FooBarAction action, Dispatcher dispatcher)
+	// IExecuteActionAsync を継承した場合非同期にできます。
+	public async Task ExecuteAction(B_Action action)
+	{
+	}
+	// アクション実行前
+	// Reduce より前
+	public void PreAction(C_Action action)
+	{
+	}
+	// アクション実行後
+	// 全ての非同期関数まで終了した後
+	public void PostAction(D_Action action)
+	{
+	}
+	// State 変更時
+	public void Subscribe(string stateName, TState oldState, TState newState)
 	{
 	}
 }
 ```
 
-## ActionCallback
-
-登録、解除可能なアクション実行時の処理です。
-
+FunctionObject を使用しない場合や DIspatcherInitializer に登録しない場合、 
+インスタンスを直接登録することが出来ます。
+この方法の場合、解除も可能です。
 ```C#
-public class TestClass
-{
-	private List<IDisposable> disposables = new List<IDisposable>();
-
-	public TestClass()
-	{
-		// Dispatcherはstaticやシングルトンなどで保持しておく
-		// Dispatcher dispatcher = ...
-
-		// 戻り値のIDisposableを受け取らないとGCで回収される
-		disposables.Add(dispatcher.RegisterActionCallback<FooAction>(ActionCallback));
-		disposables.Add(dispatcher.RegisterActionCallback<FooAction>(ActionCallbackAsync));
-	}
-	// 終了処理
-	public void Release()
-	{
-		foreach (var disposable in disposables) {
-			disposable.Dispose();
-		}
-		disposables.Clear();
-	}
-	private void ActionCallback(FooAction action, Dispatcher dispatcher)
-	{
-	}
-	private async Task ActionCallbackAsync(FooAction action, Dispatcher dispatcher)
-	{
-	}
-}
+// 戻り値を Dispose() することで解除する。
+// 受け取らなかった場合GCで破棄された時解除される。
+IDisposable disposable = dispatcher.RegisterFunctions(instance);
 ```
 
-IActionCallback、IActionCallbackAsync を継承することによりまとめて登録できます。
+## Other
 
-```C#
-public class TestClass
-	: IActionCallback<FooAction>
-	, IActionCallbackAsync<FooBarAction>
-{
-	private IDisposable disposable;
-
-	public TestClass()
-	{
-		disposable = dispatcher.RegisterActionCallback(this);
-	}
-	// 終了処理
-	public void Release()
-	{
-		disposable?.Dispose();
-		disposable = null;
-	}
-	public void ActionCallback(FooAction action, Dispatcher dispatcher)
-	{
-	}
-	public async Task ActionCallbackAsync(FooBarAction action, Dispatcher dispatcher)
-	{
-	}
-}
-```
-
-## Subscribe
-
-State の変更を受け取ります。
-
-```C#
-// 戻り値のIDisposableを受け取らないとGCで回収される
-// 第２引数がnullの場合は別コンテキストで呼び出される可能性がある
-// 　第１引数：コールバック
-// 　第２引数：[Default=null]SynchronizationContext
-// 　第３引数：[Default=true]初期化用に１度呼び出すか
-IDisposable disposable = dispatcher.Subscribe<FooState>(
-	(oldState, newState) => Console.WriteLine(newState.Count.ToString()),
-	SynchronizationContext.Current,
-	true));
-
-```
+Subscribe - State の変更を受け取る関数を登録
+RegisterActionCallback - アクションの実行時に呼び出される関数を登録
+ReflectStateAttribute、SetReflectState - IState<> のフィールドに自動で設定
