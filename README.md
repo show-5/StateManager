@@ -17,21 +17,20 @@ Store、Effect は初期化時のみ登録可能です。
 - 初期化
 
 ```C#
-// アセンブリからIStore、IEffect、IEffectAsyncをそれぞれ継承しているクラスを取得しDispatcherに登録する
+// アセンブリからStore、FunctionObjectをそれぞれ継承しているクラスを取得しDispatcherに登録する
 Dispatcher dispatcher = new Dispatcher(new DispatcherInitializer()
 	.ScanAssembly(typeof(Program).Assembly));
 
 // 個別に登録
 Dispatcher dispatcher = new Dispatcher(new DispatcherInitializer()
 	.AddStore<FooStore>()
-	.AddEffect<FooEffect>());
+	.AddFunctionObject<FooFunctions>());
 ```
 
 - 現在の State を取得
 
 ```C#
-// 同じ型が複数登録してある場合、例外が発生します。
-// 名前でアクセスしてください。
+// 同じ型が複数登録してある場合は名前でアクセスしてください。
 IState state = dispatcher.GetState(typeof(FooState));
 IState state = dispatcher.GetState("State01");
 
