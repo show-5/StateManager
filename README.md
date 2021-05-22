@@ -5,7 +5,7 @@ C# の Flux 風状態管理
 - [Dispatcher](#dispatcher)
 - [Store](#store)
 - [Action](#action)
-- [Effect](#effect)
+- [ExecuteAction](#executeaction)
 - [ActionCallback](#actioncallback)
 - [Subscribe](#subscribe)
 
@@ -41,7 +41,6 @@ IState<FooState> state = dispatcher.GetState<FooState>("State01");
 ## Store
 
 State の管理、更新関数などを定義します。
-
 ```C#
 using StateManager;
 
@@ -76,10 +75,10 @@ public class FooStore : Store<FooState>
 	public override bool IsEquivalent(FooState v1, FooState v2) => v1.Count == v2.Count;
 
 	// 更新関数
-	// Reducerは純粋関数であることが理想です。
-	// 外部APIや乱数、時間関数の呼び出しなどがある場合は、Effectの使用を検討してください。
+	// Reducerは副作用のない純粋関数であることが理想です。
 	public override IReducer<FooState>[] Reducers => new IReducer<FooState>[]
 	{
+		// State を更新する場合は、書き換えるのではなく新たに値を生成するようにします。
 		new Reducer<FooState, FooIncrementAction>((state, action) => new FooState(state.Count + 1)),
 	};
 }
@@ -144,7 +143,7 @@ string text = "abcde";
 dispatcher.Dispatch<FooAction, string>(text, (action, value) => action.SetValue(value));
 ```
 
-## Effect
+## ExecuteAction
 
 副作用のある処理などはこちら
 
