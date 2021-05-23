@@ -22,7 +22,7 @@ namespace StateManager
 
 		internal IState StateReference();
 
-		internal IDisposable Subscribe(Dispatcher dispatcher, Action<object, object> onUpdate, SynchronizationContext context, bool initialCall);
+		internal IDisposable Subscribe(Dispatcher dispatcher, Action<object, object> onUpdate, bool initialCall, SynchronizationContext context);
 
 		internal IReducer[] Reducers { get; }
 

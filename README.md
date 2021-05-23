@@ -156,24 +156,24 @@ public class Functions : FunctionObject
 	, ISubscribe<FooState>
 {
 	// アクション実行時
-	// Store の Reduce 関数実行後
+	// Store の Reducer 関数実行後
 	public void ExecuteAction(A_Action action)
 	{
 	}
 
-	// IExecuteActionAsync を継承した場合非同期にできます。
+	// IExecuteActionAsync で非同期にできます。
 	public async Task ExecuteAction(B_Action action)
 	{
 	}
 
 	// アクション実行前
-	// Reduce より前
+	// Reducer より前
 	public void PreAction(C_Action action)
 	{
 	}
 
 	// アクション実行後
-	// 全ての非同期関数まで終了した後
+	// 全ての処理（非同期含む）を終了した後
 	public void PostAction(D_Action action)
 	{
 	}
@@ -197,6 +197,40 @@ IDisposable disposable = dispatcher.RegisterFunctions(instance);
 
 ## Other
 
-- Subscribe - State の変更を受け取る関数を登録
-- RegisterActionCallback - アクションの実行時に呼び出される関数を登録
-- ReflectStateAttribute、SetReflectState - IState<> のフィールドに自動で設定
+### Dispatcher.Subscribe
+State の変更を受け取る関数を登録
+```C#
+// 戻り値を Dispose() することで解除する。
+// 受け取らなかった場合GCで破棄された時解除される。
+IDisposable disposable = dispatcher.Subscribe<FooState>(
+	"FooStateName", 				// State 名（省略可能）
+	(oldState, newState) => { },	// コールバック
+	true,							// 登録時に一度コールバックを呼び出すか
+	SynchronizationContext.Current	// コンテキスト[default:null]
+);
+```
+### Dispatcher.Register○○Action
+アクション実行時（実行前、実行後）のコールバックを登録
+- IDisposable RegisterExecuteAction<TAction>(Action<TAction, Dispatcher> callback)
+- IDisposable RegisterExecuteAction<TAction>(Func<TAction, Dispatcher, Task> callback)
+- IDisposable RegisterPreAction<TAction>(Action<TAction, Dispatcher> callback)
+- IDisposable RegisterPostAction<TAction>(Action<TAction, Dispatcher> callback)
+
+### ReflectStateAttribute
+SetReflectState を呼び出すことで IState<> のフィールドに設定
+```C#
+public class TestClass
+{
+	[ReflectState]
+	private IState<FooState> FooStateField;
+
+	[field: ReflectState("StateName")]
+	private IState<FooState> FooStateProperty { get; }
+}
+```
+```C#
+TestClass test = new TestClass();
+// ReflectState を指定したフィールドに値を設定する
+dispatcher.SetReflectState(test);
+```
+

@@ -192,13 +192,13 @@ namespace StateManager
 		/// 返り値を受け取らないなど、参照がなくなった場合にGCで解放
 		/// </summary>
 		/// <param name="id">ステートID</param>
-		/// <param name="onUpdate">通知関数</param>
 		/// <param name="initialCall">最初に1回呼ぶ</param>
+		/// <param name="onUpdate">通知関数</param>
 		/// <param name="context">コンテキスト（指定不要ならnull）</param>
 		/// <returns>購読解除用Disposable</returns>
-		public IDisposable Subscribe(int id, Action<object, object> onUpdate, SynchronizationContext context = null, bool initialCall = true)
+		public IDisposable Subscribe(int id, Action<object, object> onUpdate, bool initialCall, SynchronizationContext context = null)
 		{
-			return stores.Get(id).Subscribe(this, onUpdate, context, initialCall);
+			return stores.Get(id).Subscribe(this, onUpdate, initialCall, context);
 		}
 
 		/// <summary>
@@ -207,13 +207,13 @@ namespace StateManager
 		/// 返り値を受け取らないなど、参照がなくなった場合にGCで解放
 		/// </summary>
 		/// <param name="name">ステート名</param>
-		/// <param name="onUpdate">通知関数</param>
 		/// <param name="initialCall">最初に1回呼ぶ</param>
+		/// <param name="onUpdate">通知関数</param>
 		/// <param name="context">コンテキスト（指定不要ならnull）</param>
 		/// <returns>購読解除用Disposable</returns>
-		public IDisposable Subscribe(string name, Action<object, object> onUpdate, SynchronizationContext context = null, bool initialCall = true)
+		public IDisposable Subscribe(string name, Action<object, object> onUpdate, bool initialCall, SynchronizationContext context = null)
 		{
-			return stores.Get(name).Subscribe(this, onUpdate, context, initialCall);
+			return stores.Get(name).Subscribe(this, onUpdate, initialCall, context);
 		}
 
 		/// <summary>
@@ -227,9 +227,9 @@ namespace StateManager
 		/// <param name="initialCall">最初に1回呼ぶ</param>
 		/// <param name="context">コンテキスト（指定不要ならnull）</param>
 		/// <returns>購読解除用Disposable</returns>
-		public IDisposable Subscribe(Type type, Action<object, object> onUpdate, SynchronizationContext context = null, bool initialCall = true)
+		public IDisposable Subscribe(Type type, Action<object, object> onUpdate, bool initialCall, SynchronizationContext context = null)
 		{
-			return stores.Get(type).Subscribe(this, onUpdate, context, initialCall);
+			return stores.Get(type).Subscribe(this, onUpdate, initialCall, context);
 		}
 
 		/// <summary>
@@ -243,9 +243,9 @@ namespace StateManager
 		/// <param name="context">コンテキスト（指定不要ならnull）</param>
 		/// <typeparam name="TState">ステートの型</typeparam>
 		/// <returns>購読解除用Disposable</returns>
-		public IDisposable Subscribe<TState>(int id, Action<TState, TState> onUpdate, SynchronizationContext context = null, bool initialCall = true)
+		public IDisposable Subscribe<TState>(int id, Action<TState, TState> onUpdate, bool initialCall, SynchronizationContext context = null)
 		{
-			return stores.Get<TState>(id).AddBindState(this, onUpdate, context, initialCall);
+			return stores.Get<TState>(id).AddBindState(this, onUpdate, initialCall, context);
 		}
 
 		/// <summary>
@@ -259,9 +259,9 @@ namespace StateManager
 		/// <param name="context">コンテキスト（指定不要ならnull）</param>
 		/// <typeparam name="TState">ステートの型</typeparam>
 		/// <returns>購読解除用Disposable</returns>
-		public IDisposable Subscribe<TState>(string name, Action<TState, TState> onUpdate, SynchronizationContext context = null, bool initialCall = true)
+		public IDisposable Subscribe<TState>(string name, Action<TState, TState> onUpdate, bool initialCall, SynchronizationContext context = null)
 		{
-			return stores.Get<TState>(name).AddBindState(this, onUpdate, context, initialCall);
+			return stores.Get<TState>(name).AddBindState(this, onUpdate, initialCall, context);
 		}
 
 		/// <summary>
@@ -275,9 +275,9 @@ namespace StateManager
 		/// <param name="context">コンテキスト（指定不要ならnull）</param>
 		/// <typeparam name="TState">ステートの型</typeparam>
 		/// <returns>購読解除用Disposable</returns>
-		public IDisposable Subscribe<TState>(Action<TState, TState> onUpdate, SynchronizationContext context = null, bool initialCall = true)
+		public IDisposable Subscribe<TState>(Action<TState, TState> onUpdate, bool initialCall, SynchronizationContext context = null)
 		{
-			return stores.Get<TState>(typeof(TState)).AddBindState(this, onUpdate, context, initialCall);
+			return stores.Get<TState>(typeof(TState)).AddBindState(this, onUpdate, initialCall, context);
 		}
 
 		/// <summary>

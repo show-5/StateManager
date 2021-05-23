@@ -69,7 +69,7 @@ namespace StateManager
 
 		Type IStore.StateType => typeof(TState);
 
-		internal IDisposable AddBindState(Dispatcher dispatcher, Action<TState, TState> onUpdate, SynchronizationContext context, bool initialCall)
+		internal IDisposable AddBindState(Dispatcher dispatcher, Action<TState, TState> onUpdate, bool initialCall, SynchronizationContext context)
 		{
 			Action<TState, TState> func;
 			if (context != null) {
@@ -92,8 +92,8 @@ namespace StateManager
 			}
 			return disposable;
 		}
-		IDisposable IStore.Subscribe(Dispatcher dispatcher, Action<object, object> onUpdate, SynchronizationContext context, bool initialCall)
-			=> AddBindState(dispatcher, (TState oldState, TState newState) => onUpdate(oldState, newState), context, initialCall);
+		IDisposable IStore.Subscribe(Dispatcher dispatcher, Action<object, object> onUpdate, bool initialCall, SynchronizationContext context)
+			=> AddBindState(dispatcher, (TState oldState, TState newState) => onUpdate(oldState, newState), initialCall, context);
 
 		internal void Reduce(IReducer<TState> reducer, IAction action)
 		{
