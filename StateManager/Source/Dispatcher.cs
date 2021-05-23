@@ -340,7 +340,7 @@ namespace StateManager
 		/// <param name="callback">コールバック</param>
 		/// <typeparam name="TAction">アクション</typeparam>
 		/// <returns>終了用</returns>
-		public IDisposable RegisterActionCallback<TAction>(Action<TAction, Dispatcher> callback)
+		public IDisposable RegisterExecuteAction<TAction>(Action<TAction, Dispatcher> callback)
 			where TAction : IAction
 		{
 			return RegisterFunctions(new ExecuteActionFunc<TAction>(this, callback));
@@ -352,10 +352,34 @@ namespace StateManager
 		/// <param name="callback">コールバック</param>
 		/// <typeparam name="TAction">アクション</typeparam>
 		/// <returns>終了用</returns>
-		public IDisposable RegisterActionCallback<TAction>(Func<TAction, Dispatcher, Task> callback)
+		public IDisposable RegisterExecuteAction<TAction>(Func<TAction, Dispatcher, Task> callback)
 			where TAction : IAction
 		{
 			return RegisterFunctions(new ExecuteActionAsyncFunc<TAction>(this, callback));
+		}
+
+		/// <summary>
+		/// アクションのコールバック登録
+		/// </summary>
+		/// <param name="callback">コールバック</param>
+		/// <typeparam name="TAction">アクション</typeparam>
+		/// <returns>終了用</returns>
+		public IDisposable RegisterPreAction<TAction>(Action<TAction, Dispatcher> callback)
+			where TAction : IAction
+		{
+			return RegisterFunctions(new PreActionFunc<TAction>(this, callback));
+		}
+
+		/// <summary>
+		/// アクションのコールバック登録
+		/// </summary>
+		/// <param name="callback">コールバック</param>
+		/// <typeparam name="TAction">アクション</typeparam>
+		/// <returns>終了用</returns>
+		public IDisposable RegisterPostAction<TAction>(Action<TAction, Dispatcher> callback)
+			where TAction : IAction
+		{
+			return RegisterFunctions(new PostActionFunc<TAction>(this, callback));
 		}
 
 		/// <summary>
