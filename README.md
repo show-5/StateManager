@@ -206,7 +206,7 @@ IDisposable disposable = dispatcher.Subscribe<FooState>(
 	"FooStateName", 		// （省略可能）State 名
 	(oldState, newState) => { },	// コールバック
 	true,				// 登録時に一度コールバックを呼び出すか
-	SynchronizationContext.Current	// （省略可能）コールバックを呼び出しを行うコンテキスト
+	SynchronizationContext.Current	// （省略可能）呼び出しを行うコンテキスト
 );
 ```
 ### Dispatcher.Register○○Action
