@@ -12,6 +12,11 @@ namespace StateManager
 		/// 値
 		/// </summary>
 		object Value { get; }
+
+		/// <summary>
+		/// IState&lt;TState&gt; の型
+		/// </summary>
+		Type StateType { get; }
 	}
 
 	/// <summary>
