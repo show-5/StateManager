@@ -203,9 +203,9 @@ State の変更を受け取る関数を登録
 // 戻り値を Dispose() することで解除する。
 // 受け取らなかった場合GCで破棄された時解除される。
 IDisposable disposable = dispatcher.Subscribe<FooState>(
-	"FooStateName", 				// State 名（省略可能）
+	"FooStateName", 		// State 名（省略可能）
 	(oldState, newState) => { },	// コールバック
-	true,							// 登録時に一度コールバックを呼び出すか
+	true,				// 登録時に一度コールバックを呼び出すか
 	SynchronizationContext.Current	// コンテキスト[default:null]
 );
 ```
