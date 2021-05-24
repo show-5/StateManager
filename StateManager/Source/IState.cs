@@ -14,6 +14,16 @@ namespace StateManager
 		object Value { get; }
 
 		/// <summary>
+		/// 値の型
+		/// </summary>
+		Type ValueType { get; }
+
+		/// <summary>
+		/// 名前
+		/// </summary>
+		string Name { get; }
+
+		/// <summary>
 		/// IState&lt;TState&gt; の型
 		/// </summary>
 		Type StateType { get; }

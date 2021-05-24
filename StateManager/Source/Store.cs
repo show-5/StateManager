@@ -19,7 +19,7 @@ namespace StateManager
 			get
 			{
 				if (state_ == null) {
-					state_ = new State<TState>(InitialState());
+					state_ = new State<TState>(InitialState(), Name);
 				}
 				return state_;
 			}
