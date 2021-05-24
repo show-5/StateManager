@@ -39,15 +39,24 @@ namespace StateManager
 			TypeTable.Add(type, ret);
 			return ret;
 		}
-		public static void Reflect(Dispatcher dispatcher, object o)
+		public static (FieldInfo fi, IState state)[] GetReflectInfos(Dispatcher dispatcher, Type type)
 		{
-			foreach (var d in GetOrAdd(o.GetType())) {
+			return GetOrAdd(type).Execute(d =>
+			{
+				IState state;
 				if (!string.IsNullOrEmpty(d.name)) {
-					d.fi.SetValue(o, dispatcher.GetState(d.name));
+					state = dispatcher.GetState(d.name);
 				}
 				else {
-					d.fi.SetValue(o, dispatcher.GetState(d.type));
+					state = dispatcher.GetState(d.type);
 				}
+				return (d.fi, state);
+			});
+		}
+		public static void Reflect(Dispatcher dispatcher, object o)
+		{
+			foreach (var d in GetReflectInfos(dispatcher, o.GetType())) {
+				d.fi.SetValue(o, d.state);
 			}
 		}
 

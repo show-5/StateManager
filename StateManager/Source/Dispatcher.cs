@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -402,6 +403,16 @@ namespace StateManager
 			object obj = o;
 			ReflectStateFields.Reflect(this, obj);
 			o = (T)obj;
+		}
+
+		/// <summary>
+		/// ReflectState情報取得
+		/// </summary>
+		/// <param name="type">型</param>
+		/// <returns>情報</returns>
+		public (FieldInfo fi, IState state)[] GetReflectInfos(Type type)
+		{
+			return ReflectStateFields.GetReflectInfos(this, type);
 		}
 
 		/// <summary>
