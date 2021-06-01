@@ -84,7 +84,7 @@ public class FooStore : Store<FooState>
 // intなどでもStateにできます。
 public class Int01Store : Store<int>
 {
-	// おそらく名前は必須になるでしょう
+	// おそらく名前は必要になるでしょう
 	public override string Name => "Int01";
 
 	public override IReducer<int>[] Reducers => new IReducer<int>[]
