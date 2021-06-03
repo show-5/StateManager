@@ -6,7 +6,7 @@ C# の Flux 風状態管理
 - [Store](#store)
 - [Action](#action)
 - [Functions](#functions)
-- [Other](#other)
+- [Others](#others)
 
 ## Dispatcher
 
@@ -195,7 +195,7 @@ FunctionObject を使用しない場合や DIspatcherInitializer に登録しな
 IDisposable disposable = dispatcher.RegisterFunctions(instance);
 ```
 
-## Other
+## Others
 
 ### Dispatcher.Subscribe
 State の変更を受け取る関数を登録
